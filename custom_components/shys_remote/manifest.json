@@ -1,7 +1,7 @@
 {
   "domain": "shys_remote",
   "name": "SHYS Remote",
-  "codeowners": ["@shys"],
+  "codeowners": ["@SmartHome-yourself"],
   "config_flow": true,
   "dependencies": ["infrared"],
   "documentation": "https://github.com/SmartHome-yourself/shys_remote/blob/main/README.md",

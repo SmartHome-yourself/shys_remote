@@ -66,7 +66,7 @@ class ShysRemoteInputSensor(BinarySensorEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id, subentry.subentry_id)},
             name=subentry.title,
-            manufacturer="SHYS",
+            manufacturer="SmartHome yourself",
             model="Remote",
         )
 
