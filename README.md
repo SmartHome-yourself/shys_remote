@@ -117,17 +117,62 @@ Copy `custom_components/shys_remote` into your Home Assistant
 1. Open **Settings → Devices & services → Add integration**.
 2. Search for **SHYS Remote** and complete the setup wizard.
 3. Open the integration card and choose **Add device**.
-4. Enter a device name and select your `infrared` receiver and transmitter.
-5. Either:
-   - learn signals manually via **Manage device → Learn signal**, or
-   - choose **Import from IR database** to search Flipper-IRDB.
+4. Enter a device name, select your `infrared` receiver and transmitter, and pick
+   how to populate signals (manual or IR database).
+
+<p align="center">
+  <img src="assets/add_device.png" alt="Add device — name, receiver, transmitter and signal source" width="480">
+</p>
 
 Each logical device appears as its own device in Home Assistant. Every learned
 output signal is exposed as a button; every input signal as a binary sensor.
 
+### Option A — Import from Flipper-IRDB
+
+Choose **Import from IR database** when adding the device (or set the signal source
+accordingly in the wizard). Search by brand, model or device type and optionally
+filter by category.
+
+<p align="center">
+  <img src="assets/search_irdb.png" alt="Search the bundled Flipper-IRDB" width="480">
+</p>
+
+Pick a matching remote from the results — all supported buttons are imported in one step.
+
+<p align="center">
+  <img src="assets/choose_preset.png" alt="Choose a remote preset from search results" width="480">
+</p>
+
+<p align="center">
+  <img src="assets/device_by_preset.png" alt="Imported device with button entities for each remote key" width="480">
+</p>
+
+### Option B — Learn signals manually
+
+Leave the signal source on **manual**, then open **Manage device** on the integration
+card and choose **Learn signal**.
+
+<p align="center">
+  <img src="assets/manage_device.png" alt="Manage device — edit, learn or delete signals" width="420">
+  &nbsp;
+  <img src="assets/learn_signal.png" alt="Learn signal — name, direction and timeout" width="420">
+</p>
+
+Output signals become pressable buttons; input signals become binary sensors that
+pulse when a matching code is received.
+
+<p align="center">
+  <img src="assets/device_with_in_and_out.png" alt="Device with output button and input binary sensor" width="480">
+</p>
+
 ## Integration options
 
-Under **Configure** on the integration card:
+Under **Configure** on the integration card you can tune matching and input behaviour
+for all devices:
+
+<p align="center">
+  <img src="assets/integration_settings.png" alt="Global integration settings" width="480">
+</p>
 
 | Option | Description |
 | --- | --- |
@@ -208,9 +253,14 @@ Ausführliches Beispiel mit YAML und Links: Abschnitt **ESPHome reference setup*
 ### Kurzstart
 
 1. Integration **SHYS Remote** hinzufügen
-2. Unter der Integration **Gerät hinzufügen**
-3. Receiver und Transmitter wählen
-4. Signale manuell anlernen oder aus der Flipper-IRDB importieren
+2. Unter der Integration **Gerät hinzufügen** — Name, Receiver, Transmitter und
+   Signalquelle wählen (siehe Screenshot oben)
+3. **Flipper-IRDB:** Datenbank durchsuchen, Fernbedienung wählen → alle Tasten
+   werden als Buttons angelegt
+4. **Manuell:** Unter **Gerät verwalten → Signal anlernen** Output- oder
+   Input-Signale aufzeichnen
+
+Screenshots und Ablauf: Abschnitt **Quick start** oben (Oberfläche auf Deutsch).
 
 Dokumentation in Home Assistant: Integrationskarte → **Dokumentation** (Link
 aus `manifest.json`).
