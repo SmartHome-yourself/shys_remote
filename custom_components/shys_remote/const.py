@@ -17,6 +17,8 @@ DEFAULT_LEARN_TIMEOUT = 10
 DEFAULT_PULSE_MS = 500
 DEFAULT_MATCH_TOLERANCE = 25
 DEFAULT_DEBOUNCE_MS = 300
+DEFAULT_SEND_REPEAT_COUNT = 1
+DEFAULT_SEND_REPEAT_DELAY_MS = 45
 
 DIRECTION_OUTPUT = "output"
 DIRECTION_INPUT = "input"
@@ -37,6 +39,8 @@ CONF_DEBOUNCE_MS = "debounce_ms"
 CONF_DEVICE_NAME = "device_name"
 CONF_MATCH_TOLERANCE = "match_tolerance"
 CONF_PULSE_MS = "pulse_ms"
+CONF_SEND_REPEAT_COUNT = "send_repeat_count"
+CONF_SEND_REPEAT_DELAY_MS = "send_repeat_delay_ms"
 
 COMMAND_TYPE_RAW = "raw"
 COMMAND_TYPE_PARSED = "parsed"
@@ -99,6 +103,18 @@ def get_integration_options(entry) -> dict[str, int | float]:
             entry.options.get(CONF_MATCH_TOLERANCE, DEFAULT_MATCH_TOLERANCE)
         ),
         CONF_DEBOUNCE_MS: int(entry.options.get(CONF_DEBOUNCE_MS, DEFAULT_DEBOUNCE_MS)),
+    }
+
+
+def get_device_send_options(subentry) -> dict[str, int]:
+    """Return per-device send repeat settings with defaults."""
+    return {
+        CONF_SEND_REPEAT_COUNT: int(
+            subentry.data.get(CONF_SEND_REPEAT_COUNT, DEFAULT_SEND_REPEAT_COUNT)
+        ),
+        CONF_SEND_REPEAT_DELAY_MS: int(
+            subentry.data.get(CONF_SEND_REPEAT_DELAY_MS, DEFAULT_SEND_REPEAT_DELAY_MS)
+        ),
     }
 
 

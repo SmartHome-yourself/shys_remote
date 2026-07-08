@@ -44,13 +44,17 @@
             "device_name": "Gerätename",
             "receiver_entity_id": "Infrared Empfänger",
             "transmitter_entity_id": "Infrared Transmitter",
-            "signal_source": "Signale"
+            "signal_source": "Signale",
+            "send_repeat_count": "Sendewiederholungen",
+            "send_repeat_delay_ms": "Pause zwischen Wiederholungen"
           },
           "data_description": {
             "device_name": "Name des logischen Geräts in Home Assistant, z. B. TV oder AV-Empfänger.",
             "receiver_entity_id": "Optionaler Infrared Empfänger zum Anlernen und für Input-Signale. Leer lassen, wenn du nur senden möchtest.",
             "transmitter_entity_id": "Infrared Transmitter zum Senden von Output-Signalen.",
-            "signal_source": "Signale später manuell anlernen oder beim Anlegen Tasten aus der mitgelieferten Flipper-IRDB importieren."
+            "signal_source": "Signale später manuell anlernen oder beim Anlegen Tasten aus der mitgelieferten Flipper-IRDB importieren.",
+            "send_repeat_count": "Wie oft jedes Signal beim Senden hintereinander gesendet wird.",
+            "send_repeat_delay_ms": "Wartezeit zwischen den einzelnen Sendewiederholungen."
           },
           "data_options": {
             "signal_source": {
@@ -124,12 +128,16 @@
           "data": {
             "device_name": "Gerätename",
             "receiver_entity_id": "Infrared Empfänger",
-            "transmitter_entity_id": "Infrared Transmitter"
+            "transmitter_entity_id": "Infrared Transmitter",
+            "send_repeat_count": "Sendewiederholungen",
+            "send_repeat_delay_ms": "Pause zwischen Wiederholungen"
           },
           "data_description": {
             "device_name": "Anzeigename dieses Geräts in Home Assistant.",
             "receiver_entity_id": "Optionaler Infrared Empfänger zum Anlernen und für Input-Signale.",
-            "transmitter_entity_id": "Infrared Transmitter zum Senden von Output-Signalen."
+            "transmitter_entity_id": "Infrared Transmitter zum Senden von Output-Signalen.",
+            "send_repeat_count": "Wie oft jedes Signal beim Senden hintereinander gesendet wird.",
+            "send_repeat_delay_ms": "Wartezeit zwischen den einzelnen Sendewiederholungen."
           }
         },
         "learn_command": {

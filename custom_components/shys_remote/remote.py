@@ -3,23 +3,27 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 from homeassistant.components import infrared
 from homeassistant.components.infrared import InfraredReceivedSignal
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import Context, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
 from .const import (
     ATTR_DIRECTION,
     ATTR_NAME,
     COMMAND_TYPE_RAW,
+    CONF_SEND_REPEAT_COUNT,
+    CONF_SEND_REPEAT_DELAY_MS,
     DEFAULT_CARRIER_FREQUENCY,
     DEFAULT_LEARN_TIMEOUT,
     DIRECTION_BOTH,
     DIRECTION_INPUT,
     DIRECTION_OUTPUT,
     DOMAIN,
+    get_device_send_options,
 )
 
 if TYPE_CHECKING:
@@ -160,3 +164,38 @@ async def async_delete_command(
         )
 
     await manager.async_remove_command(subentry.subentry_id, command_name)
+
+
+async def async_send_output_command(
+    hass: HomeAssistant,
+    manager: RemoteManager,
+    subentry: ConfigSubentry,
+    command_data: dict,
+    *,
+    context: Context | None = None,
+    sender: Callable[[Any], Awaitable[None]] | None = None,
+) -> None:
+    """Send an output signal using the device repeat settings."""
+    transmitter = manager.get_transmitter_entity_id(subentry)
+    if sender is None:
+        validate_emitter(hass, transmitter)
+
+    send_options = get_device_send_options(subentry)
+    repeat_count = send_options[CONF_SEND_REPEAT_COUNT]
+    repeat_delay_ms = send_options[CONF_SEND_REPEAT_DELAY_MS]
+    command = manager.build_command(command_data)
+
+    async def _default_sender(cmd: Any) -> None:
+        await infrared.async_send_command(
+            hass,
+            transmitter,
+            cmd,
+            context=context,
+        )
+
+    send = sender or _default_sender
+
+    for attempt in range(repeat_count):
+        await send(command)
+        if attempt < repeat_count - 1 and repeat_delay_ms > 0:
+            await asyncio.sleep(repeat_delay_ms / 1000)

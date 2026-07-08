@@ -184,6 +184,17 @@ Learning is only available when a receiver is configured on the device.
   <img src="assets/device_with_in_and_out.png" alt="Device with output button and input binary sensor" width="480">
 </p>
 
+## Device options
+
+When adding or editing a device you can configure how output signals are sent:
+
+| Option | Description |
+| --- | --- |
+| Send repetitions | How many times each signal is sent in a row (default: 1) |
+| Delay between repetitions | Wait time between consecutive sends in milliseconds (default: 45 ms) |
+
+Some devices (for example Sony TVs with SIRC) need multiple repeats to react reliably.
+
 ## Integration options
 
 Under **Configure** on the integration card you can tune matching and input behaviour
@@ -290,6 +301,17 @@ ESPHome-Gerät in HA einbinden. Beim Anlegen eines SHYS-Remote-Geräts wählst d
 die Transmitter-Entität und optional eine Empfänger-Entität aus.
 
 Ausführliches Beispiel mit YAML und Links: Abschnitt **ESPHome reference setup** oben.
+
+### Geräteoptionen
+
+Beim Anlegen oder Bearbeiten eines Geräts kannst du das Sendeverhalten festlegen:
+
+| Option | Beschreibung |
+| --- | --- |
+| Sendewiederholungen | Wie oft jedes Signal hintereinander gesendet wird (Standard: 1) |
+| Pause zwischen Wiederholungen | Wartezeit zwischen den Sendungen in Millisekunden (Standard: 45 ms) |
+
+Manche Geräte (z. B. Sony-TVs mit SIRC) reagieren erst zuverlässig bei mehreren Wiederholungen.
 
 ### Kurzstart
 

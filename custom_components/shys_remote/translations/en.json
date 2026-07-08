@@ -44,13 +44,17 @@
             "device_name": "Device name",
             "receiver_entity_id": "Infrared receiver",
             "transmitter_entity_id": "Infrared transmitter",
-            "signal_source": "Signals"
+            "signal_source": "Signals",
+            "send_repeat_count": "Send repetitions",
+            "send_repeat_delay_ms": "Delay between repetitions"
           },
           "data_description": {
             "device_name": "Name of the logical device in Home Assistant, for example TV or receiver.",
             "receiver_entity_id": "Optional infrared receiver used for learning and for input signals. Leave empty if you only want to send commands.",
             "transmitter_entity_id": "Infrared transmitter used to send output signals.",
-            "signal_source": "Learn signals manually later or import buttons from the bundled Flipper-IRDB during setup."
+            "signal_source": "Learn signals manually later or import buttons from the bundled Flipper-IRDB during setup.",
+            "send_repeat_count": "How many times each signal is sent in a row when triggered.",
+            "send_repeat_delay_ms": "Wait time between consecutive send repetitions."
           },
           "data_options": {
             "signal_source": {
@@ -124,12 +128,16 @@
           "data": {
             "device_name": "Device name",
             "receiver_entity_id": "Infrared receiver",
-            "transmitter_entity_id": "Infrared transmitter"
+            "transmitter_entity_id": "Infrared transmitter",
+            "send_repeat_count": "Send repetitions",
+            "send_repeat_delay_ms": "Delay between repetitions"
           },
           "data_description": {
             "device_name": "Display name of this device in Home Assistant.",
             "receiver_entity_id": "Optional infrared receiver used for learning and for input signals.",
-            "transmitter_entity_id": "Infrared transmitter used to send output signals."
+            "transmitter_entity_id": "Infrared transmitter used to send output signals.",
+            "send_repeat_count": "How many times each signal is sent in a row when triggered.",
+            "send_repeat_delay_ms": "Wait time between consecutive send repetitions."
           }
         },
         "learn_command": {

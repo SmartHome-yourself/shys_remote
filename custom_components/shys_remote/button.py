@@ -16,6 +16,7 @@ from .icons import icon_for_signal
 
 if TYPE_CHECKING:
     from .manager import RemoteManager
+from .remote import async_send_output_command
 
 
 async def async_setup_entry(
@@ -72,4 +73,11 @@ class ShysRemoteButton(InfraredEmitterConsumerEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Send the learned remote command."""
-        await self._send_command(self._manager.build_command(self._command_data))
+        await async_send_output_command(
+            self.hass,
+            self._manager,
+            self._subentry,
+            self._command_data,
+            context=self._context,
+            sender=self._send_command,
+        )

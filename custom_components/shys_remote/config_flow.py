@@ -31,11 +31,15 @@ from .const import (
     CONF_IRDB_CATEGORY,
     CONF_MATCH_TOLERANCE,
     CONF_PULSE_MS,
+    CONF_SEND_REPEAT_COUNT,
+    CONF_SEND_REPEAT_DELAY_MS,
     CONF_SIGNAL_SOURCE,
     DEFAULT_DEBOUNCE_MS,
     DEFAULT_LEARN_TIMEOUT,
     DEFAULT_MATCH_TOLERANCE,
     DEFAULT_PULSE_MS,
+    DEFAULT_SEND_REPEAT_COUNT,
+    DEFAULT_SEND_REPEAT_DELAY_MS,
     DIRECTION_BOTH,
     DIRECTION_INPUT,
     DIRECTION_OUTPUT,
@@ -50,6 +54,7 @@ from .const import (
     SOURCE_IRDB,
     SOURCE_MANUAL,
     SUBENTRY_DEVICE,
+    get_device_send_options,
     irdb_attribution_placeholders,
 )
 from .irdb import IrdbClient
@@ -67,6 +72,43 @@ CTX_IRDB_QUERY = "irdb_last_query"
 CTX_IRDB_CATEGORY = "irdb_last_category"
 CTX_IRDB_PAGE = "irdb_results_page"
 CTX_IRDB_PREVIEW = "irdb_import_preview"
+
+
+def _device_send_schema_fields() -> dict:
+    """Return schema fields for per-device send repeat settings."""
+    return {
+        vol.Optional(CONF_SEND_REPEAT_COUNT, default=DEFAULT_SEND_REPEAT_COUNT): (
+            selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=1,
+                    max=50,
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            )
+        ),
+        vol.Optional(
+            CONF_SEND_REPEAT_DELAY_MS, default=DEFAULT_SEND_REPEAT_DELAY_MS
+        ): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=0,
+                max=5000,
+                unit_of_measurement="ms",
+                mode=selector.NumberSelectorMode.BOX,
+            )
+        ),
+    }
+
+
+def _send_options_from_input(user_input: dict[str, Any]) -> dict[str, int]:
+    """Return send repeat settings from config flow input."""
+    return {
+        CONF_SEND_REPEAT_COUNT: int(
+            user_input.get(CONF_SEND_REPEAT_COUNT, DEFAULT_SEND_REPEAT_COUNT)
+        ),
+        CONF_SEND_REPEAT_DELAY_MS: int(
+            user_input.get(CONF_SEND_REPEAT_DELAY_MS, DEFAULT_SEND_REPEAT_DELAY_MS)
+        ),
+    }
 
 
 def _device_edit_schema() -> vol.Schema:
@@ -94,6 +136,7 @@ def _device_edit_schema() -> vol.Schema:
                     ]
                 )
             ),
+            **_device_send_schema_fields(),
         }
     )
 
@@ -133,6 +176,7 @@ def _device_schema(*, include_manual_source: bool = True) -> vol.Schema:
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
+            **_device_send_schema_fields(),
         }
     )
 
@@ -340,6 +384,7 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
                 user_input[ATTR_TRANSMITTER_ENTITY_ID]
             ),
             CONF_SIGNAL_SOURCE: user_input.get(CONF_SIGNAL_SOURCE, SOURCE_IRDB),
+            **_send_options_from_input(user_input),
         }
 
     def _set_flow_search_results(self, results: list[dict[str, str]]) -> None:
@@ -524,11 +569,20 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
         receiver: str | None,
         transmitter: str,
         *,
+        send_options: dict[str, int] | None = None,
         irdb_path: str | None = None,
         irdb_direction: str | None = None,
     ) -> SubentryFlowResult:
         """Create a device subentry."""
-        data: dict[str, str] = {ATTR_TRANSMITTER_ENTITY_ID: transmitter}
+        send_settings = send_options or {
+            CONF_SEND_REPEAT_COUNT: DEFAULT_SEND_REPEAT_COUNT,
+            CONF_SEND_REPEAT_DELAY_MS: DEFAULT_SEND_REPEAT_DELAY_MS,
+        }
+        data: dict[str, str | int] = {
+            ATTR_TRANSMITTER_ENTITY_ID: transmitter,
+            CONF_SEND_REPEAT_COUNT: send_settings[CONF_SEND_REPEAT_COUNT],
+            CONF_SEND_REPEAT_DELAY_MS: send_settings[CONF_SEND_REPEAT_DELAY_MS],
+        }
         if receiver:
             data[ATTR_RECEIVER_ENTITY_ID] = receiver
         if irdb_path:
@@ -583,6 +637,7 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
                             device_name,
                             receiver_value,
                             transmitter,
+                            send_options=_send_options_from_input(pending_device),
                             irdb_path=irdb_path,
                             irdb_direction=irdb_direction,
                         ),
@@ -629,16 +684,24 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
                         self._set_pending_device(user_input)
                         return await self.async_step_irdb_search()
                     return self._create_device_entry(
-                        device_name, receiver_value, transmitter
+                        device_name,
+                        receiver_value,
+                        transmitter,
+                        send_options=_send_options_from_input(user_input),
                     )
 
+        schema = _device_schema(
+            include_manual_source=not (
+                user_input is not None
+                and not _normalize_entity_id(user_input.get(ATTR_RECEIVER_ENTITY_ID))
+            )
+        )
         return self.async_show_form(
             step_id="user",
-            data_schema=_device_schema(
-                include_manual_source=not (
-                    user_input is not None
-                    and not _normalize_entity_id(user_input.get(ATTR_RECEIVER_ENTITY_ID))
-                )
+            data_schema=(
+                self.add_suggested_values_to_schema(schema, user_input)
+                if user_input is not None
+                else schema
             ),
             errors=errors,
         )
@@ -901,18 +964,17 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
                         errors["base"] = "device_already_exists"
                         break
                 else:
+                    device_data: dict[str, str | int] = {
+                        ATTR_TRANSMITTER_ENTITY_ID: transmitter,
+                        **_send_options_from_input(user_input),
+                    }
+                    if receiver_value is not None:
+                        device_data[ATTR_RECEIVER_ENTITY_ID] = receiver_value
                     return self.async_update_and_abort(
                         config_entry,
                         subentry,
                         title=device_name,
-                        data=(
-                            {ATTR_TRANSMITTER_ENTITY_ID: transmitter}
-                            if receiver_value is None
-                            else {
-                                ATTR_RECEIVER_ENTITY_ID: receiver_value,
-                                ATTR_TRANSMITTER_ENTITY_ID: transmitter,
-                            }
-                        ),
+                        data=device_data,
                     )
 
         return self.async_show_form(
@@ -927,6 +989,7 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
                     ATTR_TRANSMITTER_ENTITY_ID: subentry.data[
                         ATTR_TRANSMITTER_ENTITY_ID
                     ],
+                    **get_device_send_options(subentry),
                 },
             ),
             description_placeholders={"device": subentry.title},

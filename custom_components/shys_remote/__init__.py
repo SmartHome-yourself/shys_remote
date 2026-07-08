@@ -42,6 +42,7 @@ from .manager import RemoteManager
 from .remote import (
     async_delete_command,
     async_learn_command,
+    async_send_output_command,
     validate_emitter,
     validate_receiver,
 )
@@ -314,13 +315,11 @@ def _async_register_services(hass: HomeAssistant) -> None:
                 },
             )
 
-        transmitter_entity_id = manager.get_transmitter_entity_id(subentry)
-        validate_emitter(hass, transmitter_entity_id)
-
-        await infrared.async_send_command(
+        await async_send_output_command(
             hass,
-            transmitter_entity_id,
-            manager.build_command(command_data),
+            manager,
+            subentry,
+            command_data,
             context=call.context,
         )
 
