@@ -39,7 +39,7 @@
       "step": {
         "user": {
           "title": "Add device",
-          "description": "Create a device and select the infrared receiver and transmitter.",
+          "description": "Create a device and select the infrared transmitter. The receiver is optional.\n\nWithout a receiver, only output signals are available; input/binary sensors and learning are disabled.",
           "data": {
             "device_name": "Device name",
             "receiver_entity_id": "Infrared receiver",
@@ -48,7 +48,7 @@
           },
           "data_description": {
             "device_name": "Name of the logical device in Home Assistant, for example TV or receiver.",
-            "receiver_entity_id": "Infrared receiver used for learning and for input signals.",
+            "receiver_entity_id": "Optional infrared receiver used for learning and for input signals. Leave empty if you only want to send commands.",
             "transmitter_entity_id": "Infrared transmitter used to send output signals.",
             "signal_source": "Learn signals manually later or import buttons from the bundled Flipper-IRDB during setup."
           },
@@ -99,7 +99,7 @@
             "direction": "Direction"
           },
           "data_description": {
-            "direction": "Output creates send buttons. Input creates binary sensors. Both creates a button and binary sensor for each signal."
+            "direction": "Output creates send buttons. Input creates binary sensors. Both creates a button and binary sensor for each signal. Without a receiver, only output is available."
           },
           "data_options": {
             "direction": {
@@ -111,7 +111,7 @@
         },
         "reconfigure": {
           "title": "Manage {device}",
-          "description": "Choose what you want to do for this device.",
+          "description": "Choose what you want to do for this device.\n\n{receiver_note}",
           "menu_options": {
             "edit_device": "Edit device",
             "learn_command": "Learn signal",
@@ -120,7 +120,7 @@
         },
         "edit_device": {
           "title": "Edit device",
-          "description": "Change the name or infrared hardware for {device}.",
+          "description": "Change the name or infrared hardware for {device}.\n\nNote: without a receiver, learning and input/binary sensors are unavailable.",
           "data": {
             "device_name": "Device name",
             "receiver_entity_id": "Infrared receiver",
@@ -128,7 +128,7 @@
           },
           "data_description": {
             "device_name": "Display name of this device in Home Assistant.",
-            "receiver_entity_id": "Infrared receiver used for learning and for input signals.",
+            "receiver_entity_id": "Optional infrared receiver used for learning and for input signals.",
             "transmitter_entity_id": "Infrared transmitter used to send output signals."
           }
         },
@@ -172,12 +172,15 @@
         "invalid_device_name": "Please enter a device name.",
         "invalid_signal_name": "Please enter a valid signal name (letters, numbers, underscore).",
         "invalid_receiver": "The selected entity is not a valid infrared receiver.",
+        "manual_requires_receiver": "Without a receiver, \"Learn manually later\" is not available. Use IR database import instead or select a receiver.",
         "invalid_emitter": "The selected entity is not a valid infrared transmitter.",
         "device_already_exists": "A device with this name already exists.",
         "command_already_exists": "This signal already exists on the device.",
         "learn_timeout": "No signal was received in time.",
         "empty_signal": "The received signal did not contain timings.",
         "learn_failed": "Learning the signal failed.",
+        "receiver_required": "No infrared receiver is configured for this device.",
+        "receiver_required_for_input": "Input or both requires a configured device receiver.",
         "not_loaded": "SHYS Remote is not loaded. Please restart Home Assistant.",
         "irdb_query_too_short": "Please enter at least 2 characters to search.",
         "irdb_no_results": "No remotes were found for this search.",
@@ -274,6 +277,12 @@
     },
     "invalid_emitter": {
       "message": "Entity '{entity_id}' is not an infrared transmitter."
+    },
+    "receiver_required": {
+      "message": "No infrared receiver is configured for this device."
+    },
+    "receiver_required_for_input": {
+      "message": "Input or both requires a configured device receiver."
     },
     "learn_timeout": {
       "message": "No signal received within {timeout} seconds."

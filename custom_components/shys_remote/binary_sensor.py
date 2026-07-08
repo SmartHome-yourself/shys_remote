@@ -28,6 +28,8 @@ async def async_setup_entry(
     manager.set_add_sensor_entities_callback(async_add_entities)
 
     for subentry in manager.get_device_subentries():
+        if not manager.can_use_input_signals(subentry):
+            continue
         entities = [
             manager.create_input_sensor_entity(subentry, signal_name)
             for signal_name, command_data in manager.get_subentry_commands(

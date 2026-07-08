@@ -74,7 +74,7 @@ def _device_edit_schema() -> vol.Schema:
     return vol.Schema(
         {
             vol.Required(CONF_DEVICE_NAME): selector.TextSelector(),
-            vol.Required(ATTR_RECEIVER_ENTITY_ID): selector.EntitySelector(
+            vol.Optional(ATTR_RECEIVER_ENTITY_ID): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     filter=[
                         selector.EntityFilterSelectorConfig(
@@ -98,12 +98,16 @@ def _device_edit_schema() -> vol.Schema:
     )
 
 
-def _device_schema() -> vol.Schema:
+def _device_schema(*, include_manual_source: bool = True) -> vol.Schema:
     """Return the schema for remote device subentries."""
+    source_options = [SOURCE_IRDB]
+    if include_manual_source:
+        source_options = [SOURCE_MANUAL, SOURCE_IRDB]
+
     return vol.Schema(
         {
             vol.Required(CONF_DEVICE_NAME): selector.TextSelector(),
-            vol.Required(ATTR_RECEIVER_ENTITY_ID): selector.EntitySelector(
+            vol.Optional(ATTR_RECEIVER_ENTITY_ID): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     filter=[
                         selector.EntityFilterSelectorConfig(
@@ -125,7 +129,7 @@ def _device_schema() -> vol.Schema:
             ),
             vol.Required(CONF_SIGNAL_SOURCE, default=SOURCE_MANUAL): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=[SOURCE_MANUAL, SOURCE_IRDB],
+                    options=source_options,
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
@@ -133,13 +137,16 @@ def _device_schema() -> vol.Schema:
     )
 
 
-def _direction_schema() -> vol.Schema:
+def _direction_schema(*, include_input: bool = True) -> vol.Schema:
     """Return the schema for signal direction selection."""
+    options = [DIRECTION_OUTPUT, DIRECTION_INPUT, DIRECTION_BOTH]
+    if not include_input:
+        options = [DIRECTION_OUTPUT]
     return vol.Schema(
         {
             vol.Required(ATTR_DIRECTION, default=DIRECTION_OUTPUT): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=[DIRECTION_OUTPUT, DIRECTION_INPUT, DIRECTION_BOTH],
+                    options=options,
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
@@ -147,12 +154,12 @@ def _direction_schema() -> vol.Schema:
     )
 
 
-def _learn_schema() -> vol.Schema:
+def _learn_schema(*, include_input: bool = True) -> vol.Schema:
     """Return the schema for learning a signal."""
     return vol.Schema(
         {
             vol.Required(ATTR_NAME): selector.TextSelector(),
-            **_direction_schema().schema,
+            **_direction_schema(include_input=include_input).schema,
             vol.Optional(ATTR_TIMEOUT, default=DEFAULT_LEARN_TIMEOUT): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=1,
@@ -199,9 +206,11 @@ def _options_schema() -> vol.Schema:
     )
 
 
-def _validate_infrared_entities(hass, receiver: str, transmitter: str) -> str | None:
+def _validate_infrared_entities(
+    hass, receiver: str | None, transmitter: str
+) -> str | None:
     """Validate receiver and transmitter entities."""
-    if receiver not in infrared.async_get_receivers(hass):
+    if receiver and receiver not in infrared.async_get_receivers(hass):
         return "invalid_receiver"
     if transmitter not in infrared.async_get_emitters(hass):
         return "invalid_emitter"
@@ -323,11 +332,10 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
 
     def _set_pending_device(self, user_input: dict[str, Any]) -> None:
         """Store pending device data in the flow context."""
+        receiver = _normalize_entity_id(user_input.get(ATTR_RECEIVER_ENTITY_ID))
         self.context[CTX_IRDB_PENDING] = {
             CONF_DEVICE_NAME: user_input[CONF_DEVICE_NAME],
-            ATTR_RECEIVER_ENTITY_ID: _normalize_entity_id(
-                user_input[ATTR_RECEIVER_ENTITY_ID]
-            ),
+            ATTR_RECEIVER_ENTITY_ID: receiver,
             ATTR_TRANSMITTER_ENTITY_ID: _normalize_entity_id(
                 user_input[ATTR_TRANSMITTER_ENTITY_ID]
             ),
@@ -513,17 +521,16 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
     def _create_device_entry(
         self,
         device_name: str,
-        receiver: str,
+        receiver: str | None,
         transmitter: str,
         *,
         irdb_path: str | None = None,
         irdb_direction: str | None = None,
     ) -> SubentryFlowResult:
         """Create a device subentry."""
-        data: dict[str, str] = {
-            ATTR_RECEIVER_ENTITY_ID: receiver,
-            ATTR_TRANSMITTER_ENTITY_ID: transmitter,
-        }
+        data: dict[str, str] = {ATTR_TRANSMITTER_ENTITY_ID: transmitter}
+        if receiver:
+            data[ATTR_RECEIVER_ENTITY_ID] = receiver
         if irdb_path:
             data[CONF_IRDB_PATH] = irdb_path
         if irdb_direction:
@@ -546,13 +553,18 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
         errors: dict[str, str] = {}
         device_name = str(pending_device.get(CONF_DEVICE_NAME, "")).strip()
         receiver = _normalize_entity_id(pending_device.get(ATTR_RECEIVER_ENTITY_ID))
+        receiver_value = receiver or None
         transmitter = _normalize_entity_id(
             pending_device.get(ATTR_TRANSMITTER_ENTITY_ID)
         )
 
         if not device_name or not slugify(device_name):
             errors["base"] = "invalid_device_name"
-        elif (error := _validate_infrared_entities(self.hass, receiver, transmitter)):
+        elif (
+            error := _validate_infrared_entities(
+                self.hass, receiver_value, transmitter
+            )
+        ):
             errors["base"] = error
         else:
             unique_id = slugify(device_name)
@@ -569,7 +581,7 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
                     return (
                         self._create_device_entry(
                             device_name,
-                            receiver,
+                            receiver_value,
                             transmitter,
                             irdb_path=irdb_path,
                             irdb_direction=irdb_direction,
@@ -590,13 +602,20 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
 
         if user_input is not None:
             device_name = user_input[CONF_DEVICE_NAME].strip()
-            receiver = _normalize_entity_id(user_input[ATTR_RECEIVER_ENTITY_ID])
+            receiver = _normalize_entity_id(user_input.get(ATTR_RECEIVER_ENTITY_ID))
+            receiver_value = receiver or None
             transmitter = _normalize_entity_id(user_input[ATTR_TRANSMITTER_ENTITY_ID])
             signal_source = user_input.get(CONF_SIGNAL_SOURCE, SOURCE_MANUAL)
 
             if not device_name:
                 errors["base"] = "invalid_device_name"
-            elif (error := _validate_infrared_entities(self.hass, receiver, transmitter)):
+            elif receiver_value is None and signal_source == SOURCE_MANUAL:
+                errors[CONF_SIGNAL_SOURCE] = "manual_requires_receiver"
+            elif (
+                error := _validate_infrared_entities(
+                    self.hass, receiver_value, transmitter
+                )
+            ):
                 errors["base"] = error
             else:
                 unique_id = slugify(device_name)
@@ -609,11 +628,18 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
                     if signal_source == SOURCE_IRDB:
                         self._set_pending_device(user_input)
                         return await self.async_step_irdb_search()
-                    return self._create_device_entry(device_name, receiver, transmitter)
+                    return self._create_device_entry(
+                        device_name, receiver_value, transmitter
+                    )
 
         return self.async_show_form(
             step_id="user",
-            data_schema=_device_schema(),
+            data_schema=_device_schema(
+                include_manual_source=not (
+                    user_input is not None
+                    and not _normalize_entity_id(user_input.get(ATTR_RECEIVER_ENTITY_ID))
+                )
+            ),
             errors=errors,
         )
 
@@ -782,7 +808,10 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
 
         if user_input is not None:
             errors: dict[str, str] = {}
+            has_receiver = bool(pending_device.get(ATTR_RECEIVER_ENTITY_ID))
             direction = user_input.get(ATTR_DIRECTION, DIRECTION_OUTPUT)
+            if not has_receiver:
+                direction = DIRECTION_OUTPUT
             result, create_errors = self._try_create_irdb_device(
                 pending_device,
                 import_preview["path"],
@@ -795,14 +824,16 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
 
             return self.async_show_form(
                 step_id="irdb_confirm",
-                data_schema=_direction_schema(),
+                data_schema=_direction_schema(include_input=has_receiver),
                 description_placeholders=placeholders,
                 errors=errors,
             )
 
         return self.async_show_form(
             step_id="irdb_confirm",
-            data_schema=_direction_schema(),
+            data_schema=_direction_schema(
+                include_input=bool(pending_device.get(ATTR_RECEIVER_ENTITY_ID))
+            ),
             description_placeholders=placeholders,
         )
 
@@ -811,14 +842,29 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         """Show the device admin menu."""
         subentry = self._get_reconfigure_subentry()
+        has_receiver = bool(subentry.data.get(ATTR_RECEIVER_ENTITY_ID))
+        menu_options = [MENU_EDIT_DEVICE]
+        if has_receiver:
+            menu_options.append(MENU_LEARN_COMMAND)
+        menu_options.append(MENU_DELETE_COMMAND)
+        receiver_note = (
+            "Empfänger konfiguriert: Anlernen und Input verfügbar."
+            if self._is_german()
+            else "Receiver configured: learning and input are available."
+        )
+        if not has_receiver:
+            receiver_note = (
+                "Kein Empfänger konfiguriert: Anlernen ist deaktiviert, Input/Binary-Sensoren sind nicht möglich."
+                if self._is_german()
+                else "No receiver configured: learning is disabled and input/binary sensors are not available."
+            )
         return self.async_show_menu(
             step_id="reconfigure",
-            menu_options=[
-                MENU_EDIT_DEVICE,
-                MENU_LEARN_COMMAND,
-                MENU_DELETE_COMMAND,
-            ],
-            description_placeholders={"device": subentry.title},
+            menu_options=menu_options,
+            description_placeholders={
+                "device": subentry.title,
+                "receiver_note": receiver_note,
+            },
         )
 
     async def async_step_edit_device(
@@ -830,14 +876,19 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
 
         if user_input is not None:
             device_name = user_input[CONF_DEVICE_NAME].strip()
-            receiver = _normalize_entity_id(user_input[ATTR_RECEIVER_ENTITY_ID])
+            receiver = _normalize_entity_id(user_input.get(ATTR_RECEIVER_ENTITY_ID))
+            receiver_value = receiver or None
             transmitter = _normalize_entity_id(
                 user_input[ATTR_TRANSMITTER_ENTITY_ID]
             )
 
             if not device_name:
                 errors["base"] = "invalid_device_name"
-            elif (error := _validate_infrared_entities(self.hass, receiver, transmitter)):
+            elif (
+                error := _validate_infrared_entities(
+                    self.hass, receiver_value, transmitter
+                )
+            ):
                 errors["base"] = error
             else:
                 unique_id = slugify(device_name)
@@ -854,10 +905,14 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
                         config_entry,
                         subentry,
                         title=device_name,
-                        data={
-                            ATTR_RECEIVER_ENTITY_ID: receiver,
-                            ATTR_TRANSMITTER_ENTITY_ID: transmitter,
-                        },
+                        data=(
+                            {ATTR_TRANSMITTER_ENTITY_ID: transmitter}
+                            if receiver_value is None
+                            else {
+                                ATTR_RECEIVER_ENTITY_ID: receiver_value,
+                                ATTR_TRANSMITTER_ENTITY_ID: transmitter,
+                            }
+                        ),
                     )
 
         return self.async_show_form(
@@ -866,7 +921,9 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
                 _device_edit_schema(),
                 {
                     CONF_DEVICE_NAME: subentry.title,
-                    ATTR_RECEIVER_ENTITY_ID: subentry.data[ATTR_RECEIVER_ENTITY_ID],
+                    ATTR_RECEIVER_ENTITY_ID: subentry.data.get(
+                        ATTR_RECEIVER_ENTITY_ID
+                    ),
                     ATTR_TRANSMITTER_ENTITY_ID: subentry.data[
                         ATTR_TRANSMITTER_ENTITY_ID
                     ],
@@ -882,6 +939,9 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
         """Learn a new remote signal."""
         errors: dict[str, str] = {}
         subentry = self._get_reconfigure_subentry()
+        receiver_entity_id = subentry.data.get(ATTR_RECEIVER_ENTITY_ID)
+        if not receiver_entity_id:
+            return await self.async_step_reconfigure()
 
         if user_input is not None:
             signal_name = slugify(user_input[ATTR_NAME].strip())
@@ -919,11 +979,11 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
 
         return self.async_show_form(
             step_id="learn_command",
-            data_schema=_learn_schema(),
+            data_schema=_learn_schema(include_input=bool(receiver_entity_id)),
             description_placeholders={
                 "device": subentry.title,
                 "receiver": _format_entity_hint(
-                    self.hass, subentry.data[ATTR_RECEIVER_ENTITY_ID]
+                    self.hass, str(receiver_entity_id)
                 ),
             },
             errors=errors,

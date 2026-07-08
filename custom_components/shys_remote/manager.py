@@ -184,9 +184,14 @@ class RemoteManager:
         """Return the transmitter configured for a device."""
         return subentry.data[ATTR_TRANSMITTER_ENTITY_ID]
 
-    def get_receiver_entity_id(self, subentry: ConfigSubentry) -> str:
-        """Return the receiver configured for a device."""
-        return subentry.data[ATTR_RECEIVER_ENTITY_ID]
+    def get_receiver_entity_id(self, subentry: ConfigSubentry) -> str | None:
+        """Return the optional receiver configured for a device."""
+        receiver = subentry.data.get(ATTR_RECEIVER_ENTITY_ID)
+        return receiver if isinstance(receiver, str) and receiver else None
+
+    def can_use_input_signals(self, subentry: ConfigSubentry) -> bool:
+        """Return whether input signals are possible for this device."""
+        return self.get_receiver_entity_id(subentry) is not None
 
     def create_button_entity(
         self,
@@ -247,7 +252,7 @@ class RemoteManager:
                 )
             primary_entity = button_entity
 
-        if self.is_input_signal(command_data):
+        if self.is_input_signal(command_data) and self.can_use_input_signals(subentry):
             sensor_entity = self.create_input_sensor_entity(subentry, signal_name)
             if self._add_sensor_entities is None:
                 self._pending_sensors.append((sensor_entity, subentry.subentry_id))
@@ -282,7 +287,7 @@ class RemoteManager:
         sensor_entities = [
             self.create_input_sensor_entity(subentry, signal_name)
             for signal_name, command_data in commands.items()
-            if self.is_input_signal(command_data)
+            if self.is_input_signal(command_data) and self.can_use_input_signals(subentry)
         ]
 
         if self._add_button_entities is None:
@@ -470,7 +475,8 @@ class RemoteManager:
         """Return input signals listening on the given receiver."""
         matches: list[tuple[str, str, list[int]]] = []
         for subentry in self.get_device_subentries():
-            if self.get_receiver_entity_id(subentry) != receiver_entity_id:
+            subentry_receiver = self.get_receiver_entity_id(subentry)
+            if subentry_receiver != receiver_entity_id:
                 continue
             for signal_name, command_data in self.get_subentry_commands(
                 subentry.subentry_id
@@ -486,6 +492,9 @@ class RemoteManager:
         """Return receiver entities that need an active subscription."""
         receivers: set[str] = set()
         for subentry in self.get_device_subentries():
+            receiver = self.get_receiver_entity_id(subentry)
+            if receiver is None:
+                continue
             has_input = any(
                 self.is_input_signal(command_data)
                 for command_data in self.get_subentry_commands(
@@ -493,7 +502,7 @@ class RemoteManager:
                 ).values()
             )
             if has_input:
-                receivers.add(self.get_receiver_entity_id(subentry))
+                receivers.add(receiver)
         return receivers
 
     @callback

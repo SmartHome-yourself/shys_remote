@@ -28,8 +28,10 @@ Every signal (learned manually or imported from IRDB) has a direction:
 ## Requirements
 
 - Home Assistant **2025.2** or newer
-- An **ESPHome** device (or other hardware) that exposes **infrared receiver and emitter**
-  entities in Home Assistant
+- An **ESPHome** device (or other hardware) that exposes an **infrared emitter**
+  entity in Home Assistant
+- An **infrared receiver** entity is optional, but required for learning signals and
+  input/binary-sensor features
 - Home Assistant's built-in [**Infrared**](https://www.home-assistant.io/integrations/infrared/)
   integration — SHYS Remote builds on top of it and does not talk to GPIO hardware
   directly
@@ -46,8 +48,8 @@ ESPHome: infrared (ir_rf_proxy)  →  HA entities (receiver + emitter)
 SHYS Remote  →  learn, send and match signals per logical device
 ```
 
-When you add a device in SHYS Remote, you pick one **infrared receiver** and one
-**infrared emitter** from Home Assistant. Those entities must exist before setup — usually
+When you add a device in SHYS Remote, you pick one **infrared emitter** and optionally an
+**infrared receiver** from Home Assistant. The emitter must exist before setup — usually
 from an ESPHome node that uses the
 [`ir_rf_proxy`](https://esphome.io/components/ir_rf_proxy/) platform.
 
@@ -129,7 +131,7 @@ Copy `custom_components/shys_remote` into your Home Assistant
 1. Open **Settings → Devices & services → Add integration**.
 2. Search for **SHYS Remote** and complete the setup wizard.
 3. Open the integration card and choose **Add device**.
-4. Enter a device name, select your `infrared` receiver and transmitter, and pick
+4. Enter a device name, select your `infrared` transmitter (receiver optional), and pick
    how to populate signals (manual or IR database).
 
 <p align="center">
@@ -161,6 +163,7 @@ direction (`output`, `input` or `both`) and confirm the import.
 
 By default, IRDB imports use **output** (send buttons). Choose **both** if you also
 want binary sensors for automations when the same keys are received.
+If no receiver is configured on the device, only **output** is available.
 
 ### Option B — Learn signals manually
 
@@ -175,6 +178,7 @@ card and choose **Learn signal**.
 
 Select **output**, **input** or **both**, submit the form, then press the button on
 the physical remote within the timeout.
+Learning is only available when a receiver is configured on the device.
 
 <p align="center">
   <img src="assets/device_with_in_and_out.png" alt="Device with output button and input binary sensor" width="480">
@@ -199,7 +203,7 @@ for all devices:
 
 | Service | Description |
 | --- | --- |
-| `shys_remote.learn` | Learn a new signal on a device |
+| `shys_remote.learn` | Learn a new signal on a device (requires receiver) |
 | `shys_remote.send` | Send a learned output signal |
 | `shys_remote.delete` | Delete a learned signal and its entity |
 
@@ -277,27 +281,27 @@ Fernbedienungssignalen über die eingebaute `infrared`-Integration.
 
 SHYS Remote spricht nicht direkt mit GPIO — es nutzt die Home-Assistant-Integration
 [**Infrared**](https://www.home-assistant.io/integrations/infrared/). Dafür brauchst
-du ein Gerät (typisch **ESPHome**), das Empfänger und Sender als infrared-Entitäten
-bereitstellt.
+du ein Gerät (typisch **ESPHome**), das mindestens einen Sender als infrared-Entität
+bereitstellt. Ein Empfänger ist optional, aber für Input/Binärsensoren und Anlernen nötig.
 
 Kurz: `remote_receiver` + `remote_transmitter` in ESPHome, darüber je eine Instanz
 [`infrared` / `ir_rf_proxy`](https://esphome.io/components/ir_rf_proxy/) — dann das
 ESPHome-Gerät in HA einbinden. Beim Anlegen eines SHYS-Remote-Geräts wählst du
-diese Receiver- und Transmitter-Entitäten aus.
+die Transmitter-Entität und optional eine Empfänger-Entität aus.
 
 Ausführliches Beispiel mit YAML und Links: Abschnitt **ESPHome reference setup** oben.
 
 ### Kurzstart
 
 1. Integration **SHYS Remote** hinzufügen
-2. Unter der Integration **Gerät hinzufügen** — Name, Receiver, Transmitter und
+2. Unter der Integration **Gerät hinzufügen** — Name, optional Empfänger, Transmitter und
    Signalquelle wählen (siehe Screenshot oben)
 3. **Flipper-IRDB:** Datenbank durchsuchen, Fernbedienung wählen, im
    Bestätigungsschritt die Richtung festlegen (`output`, `input` oder `both`) →
-   Signale werden importiert
+   Signale werden importiert (ohne Empfänger nur `output`)
 4. **Manuell:** Unter **Gerät verwalten → Signal anlernen** Richtung wählen
    (Senden, Empfangen oder Beides), Formular absenden und Taste auf der
-   Fernbedienung drücken
+   Fernbedienung drücken (nur verfügbar, wenn ein Empfänger konfiguriert ist)
 
 Screenshots und Ablauf: Abschnitt **Quick start** oben (Oberfläche auf Deutsch).
 

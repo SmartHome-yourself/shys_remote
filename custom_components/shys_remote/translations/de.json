@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "SHYS Remote",
-        "description": "Diese Integration speichert angelernte Fernbedienungssignale und reagiert auf eingehende Signale über infrared Receiver und Transmitter.\n\nNach dem Einrichten kannst du Geräte hinzufügen und Signale anlernen. Output-Signale werden per Button gesendet, Input-Signale lösen Binary Sensoren aus."
+        "description": "Diese Integration speichert angelernte Fernbedienungssignale und reagiert auf eingehende Signale über infrared Empfänger und Transmitter.\n\nNach dem Einrichten kannst du Geräte hinzufügen und Signale anlernen. Output-Signale werden per Button gesendet, Input-Signale lösen Binary Sensoren aus."
       }
     },
     "abort": {
@@ -39,16 +39,16 @@
       "step": {
         "user": {
           "title": "Gerät hinzufügen",
-          "description": "Lege ein Gerät an und wähle den passenden infrared Receiver und Transmitter.",
+          "description": "Lege ein Gerät an und wähle den passenden infrared Transmitter. Der Empfänger ist optional.\n\nOhne Empfänger sind nur Output-Signale möglich; Input/Binary-Sensoren und Anlernen sind deaktiviert.",
           "data": {
             "device_name": "Gerätename",
-            "receiver_entity_id": "Infrared Receiver",
+            "receiver_entity_id": "Infrared Empfänger",
             "transmitter_entity_id": "Infrared Transmitter",
             "signal_source": "Signale"
           },
           "data_description": {
-            "device_name": "Name des logischen Geräts in Home Assistant, z. B. TV oder Receiver.",
-            "receiver_entity_id": "Infrared Receiver zum Anlernen und für Input-Signale.",
+            "device_name": "Name des logischen Geräts in Home Assistant, z. B. TV oder AV-Empfänger.",
+            "receiver_entity_id": "Optionaler Infrared Empfänger zum Anlernen und für Input-Signale. Leer lassen, wenn du nur senden möchtest.",
             "transmitter_entity_id": "Infrared Transmitter zum Senden von Output-Signalen.",
             "signal_source": "Signale später manuell anlernen oder beim Anlegen Tasten aus der mitgelieferten Flipper-IRDB importieren."
           },
@@ -99,7 +99,7 @@
             "direction": "Richtung"
           },
           "data_description": {
-            "direction": "Output erzeugt Sende-Buttons. Input erzeugt Binary Sensoren. Beides erzeugt jeweils Button und Binary Sensor pro Signal."
+            "direction": "Output erzeugt Sende-Buttons. Input erzeugt Binary Sensoren. Beides erzeugt jeweils Button und Binary Sensor pro Signal. Ohne Empfänger ist nur Output verfügbar."
           },
           "data_options": {
             "direction": {
@@ -111,7 +111,7 @@
         },
         "reconfigure": {
           "title": "{device} verwalten",
-          "description": "Wähle, was du für dieses Gerät tun möchtest.",
+          "description": "Wähle, was du für dieses Gerät tun möchtest.\n\n{receiver_note}",
           "menu_options": {
             "edit_device": "Gerät bearbeiten",
             "learn_command": "Signal anlernen",
@@ -120,15 +120,15 @@
         },
         "edit_device": {
           "title": "Gerät bearbeiten",
-          "description": "Name oder infrared Hardware für {device} ändern.",
+          "description": "Name oder infrared Hardware für {device} ändern.\n\nHinweis: Ohne Empfänger sind Anlernen sowie Input/Binary-Sensoren nicht möglich.",
           "data": {
             "device_name": "Gerätename",
-            "receiver_entity_id": "Infrared Receiver",
+            "receiver_entity_id": "Infrared Empfänger",
             "transmitter_entity_id": "Infrared Transmitter"
           },
           "data_description": {
             "device_name": "Anzeigename dieses Geräts in Home Assistant.",
-            "receiver_entity_id": "Infrared Receiver zum Anlernen und für Input-Signale.",
+            "receiver_entity_id": "Optionaler Infrared Empfänger zum Anlernen und für Input-Signale.",
             "transmitter_entity_id": "Infrared Transmitter zum Senden von Output-Signalen."
           }
         },
@@ -171,13 +171,16 @@
       "error": {
         "invalid_device_name": "Bitte einen Gerätenamen angeben.",
         "invalid_signal_name": "Bitte einen gültigen Signalnamen angeben (Buchstaben, Zahlen, Unterstrich).",
-        "invalid_receiver": "Der gewählte Receiver ist keine gültige infrared Receiver-Entität.",
+        "invalid_receiver": "Der gewählte Empfänger ist keine gültige infrared Empfänger-Entität.",
+        "manual_requires_receiver": "Ohne Empfänger ist \"Später manuell anlernen\" nicht möglich. Nutze stattdessen den IR-Datenbank-Import oder wähle einen Empfänger.",
         "invalid_emitter": "Der gewählte Transmitter ist keine gültige infrared Emitter-Entität.",
         "device_already_exists": "Ein Gerät mit diesem Namen existiert bereits.",
         "command_already_exists": "Dieses Signal existiert auf dem Gerät bereits.",
         "learn_timeout": "Innerhalb der Wartezeit wurde kein Signal empfangen.",
         "empty_signal": "Das empfangene Signal enthielt keine Timings.",
         "learn_failed": "Das Anlernen ist fehlgeschlagen.",
+        "receiver_required": "Für dieses Gerät ist kein Infrared Empfänger konfiguriert.",
+        "receiver_required_for_input": "Input oder Beides benötigt einen konfigurierten Geräte-Empfänger.",
         "not_loaded": "SHYS Remote ist nicht geladen. Bitte Home Assistant neu starten.",
         "irdb_query_too_short": "Bitte mindestens 2 Zeichen für die Suche eingeben.",
         "irdb_no_results": "Für diese Suche wurden keine Fernbedienungen gefunden.",
@@ -270,10 +273,16 @@
       "message": "Das empfangene Signal enthielt keine Timings."
     },
     "invalid_receiver": {
-      "message": "Entität '{entity_id}' ist kein infrared Receiver."
+      "message": "Entität '{entity_id}' ist kein infrared Empfänger."
     },
     "invalid_emitter": {
       "message": "Entität '{entity_id}' ist kein infrared Transmitter."
+    },
+    "receiver_required": {
+      "message": "Für dieses Gerät ist kein Infrared Empfänger konfiguriert."
+    },
+    "receiver_required_for_input": {
+      "message": "Input oder Beides benötigt einen konfigurierten Geräte-Empfänger."
     },
     "learn_timeout": {
       "message": "Innerhalb von {timeout} Sekunden wurde kein Signal empfangen."

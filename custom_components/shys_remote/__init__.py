@@ -194,6 +194,11 @@ async def _async_process_pending_irdb_imports(
             continue
 
         direction = subentry.data.get(CONF_IRDB_DIRECTION, DIRECTION_OUTPUT)
+        if (
+            direction in (DIRECTION_INPUT, DIRECTION_BOTH)
+            and not subentry.data.get(ATTR_RECEIVER_ENTITY_ID)
+        ):
+            direction = DIRECTION_OUTPUT
 
         try:
             preview = await client.async_preview_remote(path)

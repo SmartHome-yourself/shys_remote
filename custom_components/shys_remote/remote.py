@@ -17,6 +17,7 @@ from .const import (
     DEFAULT_CARRIER_FREQUENCY,
     DEFAULT_LEARN_TIMEOUT,
     DIRECTION_BOTH,
+    DIRECTION_INPUT,
     DIRECTION_OUTPUT,
     DOMAIN,
 )
@@ -93,8 +94,21 @@ async def async_learn_command(
     direction: str = DIRECTION_OUTPUT,
 ) -> None:
     """Learn a remote signal for a device subentry."""
-    receiver = receiver_entity_id or manager.get_receiver_entity_id(subentry)
+    configured_receiver = manager.get_receiver_entity_id(subentry)
+    receiver = receiver_entity_id or configured_receiver
     transmitter = transmitter_entity_id or manager.get_transmitter_entity_id(subentry)
+
+    if receiver is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="receiver_required",
+        )
+
+    if direction in (DIRECTION_INPUT, DIRECTION_BOTH) and configured_receiver is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="receiver_required_for_input",
+        )
 
     validate_receiver(hass, receiver)
     if direction in (DIRECTION_OUTPUT, DIRECTION_BOTH):
