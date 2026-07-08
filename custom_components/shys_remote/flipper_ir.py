@@ -26,7 +26,7 @@ def parse_flipper_ir(content: str) -> list[dict[str, Any]]:
         line = line.strip()
         if not line or line.startswith("Filetype:") or line.startswith("Version:"):
             continue
-        if line == "#":
+        if line.startswith("#"):
             if current.get("name"):
                 signals.append(current)
             current = {}
@@ -61,11 +61,37 @@ def _address_from_flipper(value: str) -> int:
     return parts[0] if parts else 0
 
 
+def _sony_address_bits(protocol_key: str) -> int | None:
+    """Return Sony/SIRC address bit width for a Flipper protocol name."""
+    if protocol_key in {"sirc", "sony", "sony12"}:
+        return 5
+    if protocol_key in {"sirc15", "sony15"}:
+        return 8
+    if protocol_key in {"sirc20", "sony20"}:
+        return 13
+    if protocol_key.startswith("sirc"):
+        if protocol_key.endswith("15"):
+            return 8
+        if protocol_key.endswith("20"):
+            return 13
+        return 5
+    if protocol_key.startswith("sony"):
+        if protocol_key.endswith("12"):
+            return 5
+        if protocol_key.endswith("15"):
+            return 8
+        if protocol_key.endswith("20"):
+            return 13
+        return 8
+    return None
+
+
 def _build_parsed_command(
     protocol: str, address: int, command: int, frequency: int
 ) -> Any | None:
     """Build an infrared-protocols command for a Flipper parsed signal."""
     protocol_key = protocol.strip().lower()
+    sony_address_bits = _sony_address_bits(protocol_key)
 
     try:
         if protocol_key in {"samsung32", "samsung"}:
@@ -89,19 +115,12 @@ def _build_parsed_command(
                 modulation=frequency or 36000,
             )
 
-        if protocol_key.startswith("sony"):
+        if sony_address_bits is not None:
             from infrared_protocols.commands.sony import SonyCommand
 
-            address_bits = 8
-            if protocol_key.endswith("12"):
-                address_bits = 5
-            elif protocol_key.endswith("15"):
-                address_bits = 8
-            elif protocol_key.endswith("20"):
-                address_bits = 13
             return SonyCommand(
                 address=address,
-                address_bits=address_bits,
+                address_bits=sony_address_bits,
                 command=command & 0x7F,
                 modulation=frequency or 40000,
             )
