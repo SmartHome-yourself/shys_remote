@@ -57,16 +57,6 @@
             "signal_source": "Learn signals manually later or import buttons from the bundled Flipper-IRDB during setup.",
             "send_repeat_count": "How many times each signal is sent in a row when triggered.",
             "send_repeat_delay_ms": "Wait time between consecutive send repetitions."
-          },
-          "data_options": {
-            "signal_source": {
-              "manual": "Learn manually later",
-              "irdb": "Import from IR database"
-            },
-            "medium": {
-              "ir": "Infrared",
-              "rf": "Radio frequency"
-            }
           }
         },
         "irdb_search": {
@@ -79,12 +69,6 @@
           "data_description": {
             "irdb_query": "Example: Samsung TV, Sony soundbar or BN59.",
             "irdb_category": "Optional filter to narrow results, for example TVs only."
-          },
-          "data_options": {
-            "irdb_category": {
-              "__all__": "All categories",
-              "all": "All categories"
-            }
           }
         },
         "irdb_pick_remote": {
@@ -95,11 +79,6 @@
           },
           "data_description": {
             "irdb_remote": "Choose a remote to import. You choose the signal direction in the next step. Use the page entries when there are many results."
-          },
-          "data_options": {
-            "irdb_remote": {
-              "__new_search__": "↩ New search"
-            }
           }
         },
         "irdb_confirm": {
@@ -110,13 +89,6 @@
           },
           "data_description": {
             "direction": "Output creates send buttons. Input creates binary sensors. Both creates a button and binary sensor for each signal. Without a receiver, only output is available."
-          },
-          "data_options": {
-            "direction": {
-              "output": "Send (Output)",
-              "input": "Receive (Input)",
-              "both": "Both (Input + Output)"
-            }
           }
         },
         "reconfigure": {
@@ -160,13 +132,6 @@
             "name": "Unique name for this signal on the device, for example power or volume_up.",
             "direction": "Output creates a send button. Input creates a binary sensor. Both creates a button and binary sensor at once.",
             "timeout": "How long Home Assistant waits for the next signal after you submit this form."
-          },
-          "data_options": {
-            "direction": {
-              "output": "Send (Output)",
-              "input": "Receive (Input)",
-              "both": "Both (Input + Output)"
-            }
           }
         },
         "delete_command": {
@@ -212,6 +177,27 @@
         "no_commands": "No signals are stored for this device yet.",
         "already_configured": "A device with this name already exists.",
         "reconfigure_successful": "Device settings were updated."
+      }
+    }
+  },
+  "selector": {
+    "medium": {
+      "options": {
+        "ir": "Infrared",
+        "rf": "Radio frequency"
+      }
+    },
+    "signal_source": {
+      "options": {
+        "manual": "Learn manually later",
+        "irdb": "Import from IR database"
+      }
+    },
+    "direction": {
+      "options": {
+        "output": "Send (Output)",
+        "input": "Receive (Input)",
+        "both": "Both (Input + Output)"
       }
     }
   },
@@ -277,22 +263,22 @@
   },
   "exceptions": {
     "command_already_exists": {
-      "message": "Signal '{name}' already exists on device '{device}'."
+      "message": "Signal {name} already exists on device {device}."
     },
     "command_not_found": {
-      "message": "Signal '{name}' was not found on device '{device}'."
+      "message": "Signal {name} was not found on device {device}."
     },
     "device_not_found": {
-      "message": "Device '{device}' was not found."
+      "message": "Device {device} was not found."
     },
     "empty_signal": {
       "message": "The received signal did not contain timings."
     },
     "invalid_receiver": {
-      "message": "Entity '{entity_id}' is not an infrared receiver."
+      "message": "Entity {entity_id} is not an infrared receiver."
     },
     "invalid_emitter": {
-      "message": "Entity '{entity_id}' is not a valid transmitter for the selected signal medium."
+      "message": "Entity {entity_id} is not a valid transmitter for the selected signal medium."
     },
     "receiver_required": {
       "message": "No infrared receiver is configured for this device."
@@ -307,13 +293,13 @@
       "message": "SHYS Remote is not loaded."
     },
     "signal_not_output": {
-      "message": "Signal '{name}' on device '{device}' is configured for input and cannot be sent."
+      "message": "Signal {name} on device {device} is configured for input and cannot be sent."
     },
     "irdb_index_failed": {
       "message": "The Flipper-IRDB index could not be loaded ({status})."
     },
     "irdb_download_failed": {
-      "message": "Remote '{path}' could not be downloaded (HTTP {status})."
+      "message": "Remote {path} could not be downloaded (HTTP {status})."
     }
   }
 }

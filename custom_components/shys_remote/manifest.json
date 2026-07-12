@@ -1,12 +1,13 @@
 {
   "domain": "shys_remote",
   "name": "SHYS Remote",
+  "after_dependencies": ["radio_frequency"],
   "codeowners": ["@SmartHome-yourself"],
   "config_flow": true,
   "dependencies": ["infrared"],
-  "after_dependencies": ["radio_frequency"],
   "documentation": "https://github.com/SmartHome-yourself/shys_remote/blob/main/README.md",
   "integration_type": "hub",
   "iot_class": "local_push",
+  "issue_tracker": "https://github.com/SmartHome-yourself/shys_remote/issues",
   "version": "0.10.0"
 }

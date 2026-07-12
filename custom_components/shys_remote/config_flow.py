@@ -120,6 +120,7 @@ def _medium_schema_field() -> dict:
             selector.SelectSelectorConfig(
                 options=[SIGNAL_MEDIUM_IR, SIGNAL_MEDIUM_RF],
                 mode=selector.SelectSelectorMode.DROPDOWN,
+                translation_key="medium",
             )
         ),
     }
@@ -164,6 +165,7 @@ def _device_schema(hass, *, include_manual_source: bool = True) -> vol.Schema:
                 selector.SelectSelectorConfig(
                     options=source_options,
                     mode=selector.SelectSelectorMode.DROPDOWN,
+                    translation_key="signal_source",
                 )
             ),
             **_device_send_schema_fields(),
@@ -182,6 +184,7 @@ def _direction_schema(*, include_input: bool = True) -> vol.Schema:
                 selector.SelectSelectorConfig(
                     options=options,
                     mode=selector.SelectSelectorMode.DROPDOWN,
+                    translation_key="direction",
                 )
             ),
         }

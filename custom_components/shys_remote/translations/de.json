@@ -57,16 +57,6 @@
             "signal_source": "Signale später manuell anlernen oder beim Anlegen Tasten aus der mitgelieferten Flipper-IRDB importieren.",
             "send_repeat_count": "Wie oft jedes Signal beim Senden hintereinander gesendet wird.",
             "send_repeat_delay_ms": "Wartezeit zwischen den einzelnen Sendewiederholungen."
-          },
-          "data_options": {
-            "signal_source": {
-              "manual": "Später manuell anlernen",
-              "irdb": "Aus IR-Datenbank importieren"
-            },
-            "medium": {
-              "ir": "Infrarot",
-              "rf": "Funk (RF)"
-            }
           }
         },
         "irdb_search": {
@@ -79,12 +69,6 @@
           "data_description": {
             "irdb_query": "Beispiel: Samsung TV, Sony Soundbar oder BN59.",
             "irdb_category": "Optionale Einschränkung, z. B. nur TVs."
-          },
-          "data_options": {
-            "irdb_category": {
-              "__all__": "Alle Kategorien",
-              "all": "Alle Kategorien"
-            }
           }
         },
         "irdb_pick_remote": {
@@ -95,11 +79,6 @@
           },
           "data_description": {
             "irdb_remote": "Fernbedienung zum Import wählen. Im nächsten Schritt legst du die Richtung fest. Bei vielen Treffern über die Seiten-Einträge blättern."
-          },
-          "data_options": {
-            "irdb_remote": {
-              "__new_search__": "↩ Neue Suche"
-            }
           }
         },
         "irdb_confirm": {
@@ -110,13 +89,6 @@
           },
           "data_description": {
             "direction": "Output erzeugt Sende-Buttons. Input erzeugt Binary Sensoren. Beides erzeugt jeweils Button und Binary Sensor pro Signal. Ohne Empfänger ist nur Output verfügbar."
-          },
-          "data_options": {
-            "direction": {
-              "output": "Senden (Output)",
-              "input": "Empfangen (Input)",
-              "both": "Beides (Input + Output)"
-            }
           }
         },
         "reconfigure": {
@@ -160,13 +132,6 @@
             "name": "Eindeutiger Name für dieses Signal am Gerät, z. B. power oder volume_up.",
             "direction": "Output erzeugt einen Sende-Button. Input erzeugt einen Binary Sensor. Beides erzeugt Button und Binary Sensor gleichzeitig.",
             "timeout": "Wie lange Home Assistant nach dem Absenden des Formulars auf das nächste Signal wartet."
-          },
-          "data_options": {
-            "direction": {
-              "output": "Senden (Output)",
-              "input": "Empfangen (Input)",
-              "both": "Beides (Input + Output)"
-            }
           }
         },
         "delete_command": {
@@ -212,6 +177,27 @@
         "no_commands": "Für dieses Gerät sind noch keine Signale gespeichert.",
         "already_configured": "Ein Gerät mit diesem Namen existiert bereits.",
         "reconfigure_successful": "Geräteeinstellungen wurden aktualisiert."
+      }
+    }
+  },
+  "selector": {
+    "medium": {
+      "options": {
+        "ir": "Infrarot",
+        "rf": "Funk (RF)"
+      }
+    },
+    "signal_source": {
+      "options": {
+        "manual": "Später manuell anlernen",
+        "irdb": "Aus IR-Datenbank importieren"
+      }
+    },
+    "direction": {
+      "options": {
+        "output": "Senden (Output)",
+        "input": "Empfangen (Input)",
+        "both": "Beides (Input + Output)"
       }
     }
   },
@@ -277,22 +263,22 @@
   },
   "exceptions": {
     "command_already_exists": {
-      "message": "Signal '{name}' existiert auf Gerät '{device}' bereits."
+      "message": "Signal {name} existiert auf Gerät {device} bereits."
     },
     "command_not_found": {
-      "message": "Signal '{name}' wurde auf Gerät '{device}' nicht gefunden."
+      "message": "Signal {name} wurde auf Gerät {device} nicht gefunden."
     },
     "device_not_found": {
-      "message": "Gerät '{device}' wurde nicht gefunden."
+      "message": "Gerät {device} wurde nicht gefunden."
     },
     "empty_signal": {
       "message": "Das empfangene Signal enthielt keine Timings."
     },
     "invalid_receiver": {
-      "message": "Entität '{entity_id}' ist kein infrared Empfänger."
+      "message": "Entität {entity_id} ist kein infrared Empfänger."
     },
     "invalid_emitter": {
-      "message": "Entität '{entity_id}' ist für das gewählte Signal-Medium kein gültiger Transmitter."
+      "message": "Entität {entity_id} ist für das gewählte Signal-Medium kein gültiger Transmitter."
     },
     "receiver_required": {
       "message": "Für dieses Gerät ist kein Infrared Empfänger konfiguriert."
@@ -307,13 +293,13 @@
       "message": "SHYS Remote ist nicht geladen."
     },
     "signal_not_output": {
-      "message": "Signal '{name}' auf Gerät '{device}' ist als Input konfiguriert und kann nicht gesendet werden."
+      "message": "Signal {name} auf Gerät {device} ist als Input konfiguriert und kann nicht gesendet werden."
     },
     "irdb_index_failed": {
       "message": "Der Flipper-IRDB-Index konnte nicht geladen werden ({status})."
     },
     "irdb_download_failed": {
-      "message": "Fernbedienung '{path}' konnte nicht heruntergeladen werden (HTTP {status})."
+      "message": "Fernbedienung {path} konnte nicht heruntergeladen werden (HTTP {status})."
     }
   }
 }
