@@ -53,12 +53,52 @@ def _first_hex_byte(value: str) -> int:
     return parts[0] if parts else 0
 
 
-def _address_from_flipper(value: str) -> int:
-    """Convert a Flipper address field to an integer."""
+def _flipper_uint32_from_hex(value: str) -> int:
+    """Convert a Flipper 4-byte hex field to a little-endian integer."""
+    parts = _parse_hex_bytes(value)
+    while len(parts) < 4:
+        parts.append(0)
+    return parts[0] | (parts[1] << 8) | (parts[2] << 16) | (parts[3] << 24)
+
+
+def _flipper_address_uint16(value: str) -> int:
+    """Convert the first two bytes of a Flipper address field."""
     parts = _parse_hex_bytes(value)
     if len(parts) >= 2:
         return parts[0] | (parts[1] << 8)
     return parts[0] if parts else 0
+
+
+def _kaseikyo_error_correction(data: bytes) -> bytes:
+    """Append the Flipper/PDWM XOR checksum byte."""
+    if len(data) < 5:
+        return b"\x00"
+    return bytes([data[2] ^ data[3] ^ data[4]])
+
+
+def _build_kaseikyo_command(
+    address_hex: str, command_hex: str, frequency: int
+) -> Any | None:
+    """Build a Kaseikyo command from Flipper address and command fields."""
+    from infrared_protocols.commands.kaseikyo import KaseikyoCommand
+
+    address = _flipper_uint32_from_hex(address_hex)
+    command = _flipper_uint32_from_hex(command_hex) & 0xFFFF
+
+    vendor_id = (address >> 8) & 0xFFFF
+    genre1 = (address >> 4) & 0xF
+    genre2 = address & 0xF
+    device_id = (address >> 24) & 0x3
+
+    data3 = (genre2 & 0xF) | ((command & 0xF) << 4)
+    data4 = (device_id << 6) | ((command >> 4) & 0x3F)
+
+    return KaseikyoCommand(
+        address=vendor_id,
+        data=bytes([(genre1 << 4), data3, data4]),
+        error_correction=_kaseikyo_error_correction,
+        modulation=frequency or 38000,
+    )
 
 
 def _sony_address_bits(protocol_key: str) -> int | None:
@@ -87,31 +127,45 @@ def _sony_address_bits(protocol_key: str) -> int | None:
 
 
 def _build_parsed_command(
-    protocol: str, address: int, command: int, frequency: int
+    protocol: str,
+    address_hex: str,
+    command_hex: str,
+    frequency: int,
 ) -> Any | None:
     """Build an infrared-protocols command for a Flipper parsed signal."""
     protocol_key = protocol.strip().lower()
     sony_address_bits = _sony_address_bits(protocol_key)
 
     try:
+        if protocol_key in {"kaseikyo", "panasonic"}:
+            return _build_kaseikyo_command(address_hex, command_hex, frequency)
+
         if protocol_key in {"samsung32", "samsung"}:
             from infrared_protocols.commands.samsung import Samsung32Command
 
             return Samsung32Command(
-                address=address, command=command, modulation=frequency
+                address=_flipper_address_uint16(address_hex),
+                command=_first_hex_byte(command_hex),
+                modulation=frequency,
             )
 
-        if protocol_key in {"nec", "necext"}:
+        if protocol_key in {"nec", "necext", "nec42", "nec42ext"}:
             from infrared_protocols.commands.nec import NECCommand
 
+            if "42" in protocol_key:
+                address = _flipper_uint32_from_hex(address_hex)
+                command = _flipper_uint32_from_hex(command_hex) & 0xFFFF
+            else:
+                address = _flipper_address_uint16(address_hex)
+                command = _first_hex_byte(command_hex)
             return NECCommand(address=address, command=command, modulation=frequency)
 
         if protocol_key in {"rc5", "rc5x", "rc6"}:
             from infrared_protocols.commands.rc5 import RC5Command
 
             return RC5Command(
-                address=address & 0x1F,
-                command=command & 0x7F,
+                address=_flipper_address_uint16(address_hex) & 0x1F,
+                command=_first_hex_byte(command_hex) & 0x7F,
                 modulation=frequency or 36000,
             )
 
@@ -119,9 +173,9 @@ def _build_parsed_command(
             from infrared_protocols.commands.sony import SonyCommand
 
             return SonyCommand(
-                address=address,
+                address=_flipper_address_uint16(address_hex),
                 address_bits=sony_address_bits,
-                command=command & 0x7F,
+                command=_first_hex_byte(command_hex) & 0x7F,
                 modulation=frequency or 40000,
             )
 
@@ -129,8 +183,8 @@ def _build_parsed_command(
             from infrared_protocols.commands.sharp import SharpCommand
 
             return SharpCommand(
-                address=address & 0x1F,
-                command=command & 0xFF,
+                address=_flipper_address_uint16(address_hex) & 0x1F,
+                command=_first_hex_byte(command_hex) & 0xFF,
                 modulation=frequency,
             )
     except (ImportError, ValueError, TypeError) as err:
@@ -139,6 +193,7 @@ def _build_parsed_command(
         )
         return None
 
+    _LOGGER.debug("Unsupported Flipper protocol: %s", protocol)
     return None
 
 
@@ -165,9 +220,11 @@ def signal_to_command_data(signal: dict[str, Any]) -> dict[str, Any] | None:
         protocol = signal.get("protocol")
         if not protocol:
             return None
-        address = _address_from_flipper(signal.get("address", "00"))
-        command = _first_hex_byte(signal.get("command", "00"))
-        parsed_command = _build_parsed_command(protocol, address, command, frequency)
+        address_hex = signal.get("address", "00")
+        command_hex = signal.get("command", "00")
+        parsed_command = _build_parsed_command(
+            protocol, address_hex, command_hex, frequency
+        )
         if parsed_command is None:
             return None
         return {

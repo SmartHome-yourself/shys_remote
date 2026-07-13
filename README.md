@@ -254,6 +254,27 @@ files are downloaded from GitHub only when you import a remote.
 - License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
 - Details: see [`data/IRDB_NOTICE.md`](data/IRDB_NOTICE.md)
 
+### Supported signal formats
+
+| Type / protocol | Status | Notes |
+| --- | --- | --- |
+| `raw` | Supported | Used by many ACs, Pioneer receivers, etc. |
+| `NEC`, `NECext`, `NEC42`, `NEC42ext` | Supported | Common for many TVs and accessories |
+| `Samsung32` | Supported | |
+| `RC5`, `RC5X`, `RC6` | Supported | |
+| `SIRC`, `SIRC15`, `SIRC20` | Supported | Sony TVs and devices |
+| `Kaseikyo` | Supported | Panasonic TVs, Denon/Marantz AVRs, Technics, etc. |
+| `Sharp` | Supported | When present as parsed protocol |
+| `RCA` | Not yet | Flipper-specific protocol (distinct from NEC) |
+| `Pioneer` | Not yet | Many Pioneer remotes in IRDB use `raw` instead |
+| `parsed_array` | Not yet | Multi-frame commands (e.g. some AC profiles) |
+
+Unsupported signals in a remote are skipped during import; the remote can still
+be saved if at least one signal is supported.
+
+To analyse protocol usage across the bundled index, run
+`scripts/analyze_irdb_protocols.py` from the component directory.
+
 ## Removal
 
 1. Delete the **SHYS Remote** integration under **Settings → Devices & services**.
@@ -312,6 +333,12 @@ Beim Anlegen oder Bearbeiten eines Geräts kannst du das Sendeverhalten festlege
 | Pause zwischen Wiederholungen | Wartezeit zwischen den Sendungen in Millisekunden (Standard: 45 ms) |
 
 Manche Geräte (z. B. Sony-TVs mit SIRC) reagieren erst zuverlässig bei mehreren Wiederholungen.
+
+### Unterstützte IRDB-Protokolle
+
+Siehe Tabelle im Abschnitt **Flipper-IRDB** oben. Neu: **Kaseikyo** (Panasonic, Denon,
+Marantz u. a.). Noch offen: Flipper-`RCA`, Flipper-`Pioneer` und `parsed_array`.
+Viele Pioneer-Profile in der IRDB nutzen bereits `raw` und funktionieren deshalb.
 
 ### Kurzstart
 
