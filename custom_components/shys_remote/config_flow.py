@@ -93,6 +93,15 @@ CTX_IRDB_PREVIEW = "irdb_import_preview"
 CTX_RF_LEARN_STAGE = "rf_learn_stage"
 CTX_RF_LEARN_INPUT = "rf_learn_input"
 CTX_RF_LEARN_FIRST_TIMINGS = "rf_learn_first_timings"
+# Set by _rf_learn_error_done()/the success path right before returning
+# async_show_progress_done(next_step_id="learn_command"), and consumed by
+# async_step_learn_command() on the very next call that follows. Needed
+# because a SHOW_PROGRESS step is only allowed to transition to another
+# SHOW_PROGRESS or to SHOW_PROGRESS_DONE (HA enforces this and raises
+# ValueError otherwise) - it can't return a form/abort result directly, so
+# there's no way to hand the outcome to the next step except via context.
+CTX_RF_LEARN_ERROR = "rf_learn_error"
+CTX_RF_LEARN_SUCCESS = "rf_learn_success"
 
 PROGRESS_LEARN_LISTENING_FIRST = "learn_listening_first"
 PROGRESS_LEARN_LISTENING_CONFIRM = "learn_listening_confirm"
@@ -1209,6 +1218,22 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
         self.context.pop(CTX_RF_LEARN_INPUT, None)
         self.context.pop(CTX_RF_LEARN_FIRST_TIMINGS, None)
 
+    def _rf_learn_error_done(self, error_key: str) -> SubentryFlowResult:
+        """Finish a failed RF learn attempt and hand off to the form step.
+
+        A SHOW_PROGRESS step may only transition to another SHOW_PROGRESS or
+        to SHOW_PROGRESS_DONE - returning a form/abort result directly from
+        _async_resume_rf_learn makes Home Assistant's flow manager raise
+        ValueError ("Show progress can only transition to show progress or
+        show progress done"), which isn't a ServiceValidationError and was
+        escaping uncaught, leaving the flow stuck showing the same blank
+        error and retrying the same broken transition. Stashing the error
+        and going through show_progress_done -> learn_command avoids that.
+        """
+        self._clear_rf_learn_context()
+        self.context[CTX_RF_LEARN_ERROR] = error_key
+        return self.async_show_progress_done(next_step_id="learn_command")
+
     async def async_step_learn_command(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
@@ -1222,9 +1247,13 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
         from the initial form render, which is also called with
         user_input=None. _async_resume_rf_learn then drives the rest: start
         the confirmation capture, compare the two, and either store the
-        signal or show a retryable error. IR keeps the original single-wait
-        behavior unchanged, since a demodulated IR receiver doesn't need a
-        second capture to trust the first one.
+        signal or hand off a retryable error - both via
+        async_show_progress_done(next_step_id="learn_command"), which is why
+        this method also has to check for a pending result stashed in
+        self.context before treating a None user_input as a fresh render.
+        IR keeps the original single-wait behavior unchanged, since a
+        demodulated IR receiver doesn't need a second capture to trust the
+        first one.
         """
         subentry = self._get_reconfigure_subentry()
         receiver_entity_id = subentry.data.get(ATTR_RECEIVER_ENTITY_ID)
@@ -1235,7 +1264,17 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
         if self.async_get_progress_task() is not None:
             return await self._async_resume_rf_learn(subentry, receiver_entity_id)
 
+        pending_success = self.context.pop(CTX_RF_LEARN_SUCCESS, None)
+        if pending_success is not None:
+            return self.async_abort(
+                reason="signal_learned",
+                description_placeholders=pending_success,
+            )
+
         errors: dict[str, str] = {}
+        pending_error = self.context.pop(CTX_RF_LEARN_ERROR, None)
+        if pending_error is not None:
+            errors["base"] = pending_error
 
         if user_input is not None:
             signal_name = slugify(user_input[ATTR_NAME].strip())
@@ -1296,19 +1335,34 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
         subentry: ConfigSubentry,
         receiver_entity_id: str,
     ) -> SubentryFlowResult:
-        """Advance the RF learn flow once a capture task has finished."""
+        """Advance the RF learn flow once a capture task has finished.
+
+        Every exit path here must return either another show_progress (to
+        keep going) or hand off through _rf_learn_error_done/
+        show_progress_done (to finish) - never a form/abort result directly,
+        and never let an exception escape uncaught. Both would violate Home
+        Assistant's SHOW_PROGRESS transition rules or skip its progress-task
+        bookkeeping, which is what previously left the flow retrying the
+        same failure forever behind a blank error dialog.
+        """
         task = self.async_get_progress_task()
-        assert task is not None  # only called when a progress task is set
-        learn_input = self.context[CTX_RF_LEARN_INPUT]
-        stage = self.context[CTX_RF_LEARN_STAGE]
+        learn_input = self.context.get(CTX_RF_LEARN_INPUT)
+        stage = self.context.get(CTX_RF_LEARN_STAGE)
+
+        if task is None or learn_input is None or stage is None:
+            # Should be unreachable (this is only entered right after we set
+            # both alongside the progress task), but never leave the user
+            # staring at a blank/looping dialog if flow state ever desyncs.
+            _LOGGER.error("RF learn progress resumed without expected flow state")
+            return self._rf_learn_error_done("learn_failed")
 
         try:
             timings = task.result()
         except ServiceValidationError as err:
-            self._clear_rf_learn_context()
-            return self._learn_command_form(
-                subentry, receiver_entity_id, {"base": _service_error_key(err)}
-            )
+            return self._rf_learn_error_done(_service_error_key(err))
+        except Exception:  # noqa: BLE001 - always surface a readable error, never a blank one
+            _LOGGER.exception("RF learn capture failed unexpectedly")
+            return self._rf_learn_error_done("learn_failed")
 
         if stage == "first":
             self.context[CTX_RF_LEARN_FIRST_TIMINGS] = timings
@@ -1321,26 +1375,31 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
             )
 
         first_timings = self.context[CTX_RF_LEARN_FIRST_TIMINGS]
-        manager = self._get_manager()
         try:
+            manager = self._get_manager()
             check_rf_captures_match(manager, first_timings, timings, subentry.title)
         except ServiceValidationError as err:
-            self._clear_rf_learn_context()
-            return self._learn_command_form(
-                subentry, receiver_entity_id, {"base": _service_error_key(err)}
-            )
+            return self._rf_learn_error_done(_service_error_key(err))
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("RF learn capture-match check failed unexpectedly")
+            return self._rf_learn_error_done("learn_failed")
 
         signal_name = learn_input[ATTR_NAME]
         command_data = build_rf_command_data(
             subentry, learn_input[ATTR_DIRECTION], first_timings
         )
-        await manager.async_add_command(subentry, signal_name, command_data)
-        self._clear_rf_learn_context()
+        try:
+            await manager.async_add_command(subentry, signal_name, command_data)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Failed to store learned RF signal")
+            return self._rf_learn_error_done("learn_failed")
 
-        return self.async_abort(
-            reason="signal_learned",
-            description_placeholders={"name": signal_name, "device": subentry.title},
-        )
+        self._clear_rf_learn_context()
+        self.context[CTX_RF_LEARN_SUCCESS] = {
+            "name": signal_name,
+            "device": subentry.title,
+        }
+        return self.async_show_progress_done(next_step_id="learn_command")
 
     async def async_step_delete_command(
         self, user_input: dict[str, Any] | None = None
