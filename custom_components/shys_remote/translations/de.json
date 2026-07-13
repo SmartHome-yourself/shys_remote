@@ -138,6 +138,10 @@
             "timeout": "Wie lange Home Assistant nach dem Absenden des Formulars auf das nächste Signal wartet."
           }
         },
+        "learn_command_confirm": {
+          "title": "Signal bestätigen",
+          "description": "Erste Aufnahme für {device} empfangen. Drücke jetzt dieselbe Taste noch einmal, um das Signal zu bestätigen.\n\nEmpfänger zum Anlernen: {receiver}"
+        },
         "delete_command": {
           "title": "Signal löschen",
           "description": "Wähle ein gespeichertes Signal von {device}, das entfernt werden soll.",
@@ -182,10 +186,6 @@
         "no_commands": "Für dieses Gerät sind noch keine Signale gespeichert.",
         "already_configured": "Ein Gerät mit diesem Namen existiert bereits.",
         "reconfigure_successful": "Geräteeinstellungen wurden aktualisiert."
-      },
-      "progress": {
-        "learn_listening_first": "Drücke jetzt die Taste auf der Fernbedienung für {device}.\n\nEmpfänger zum Anlernen: {receiver}",
-        "learn_listening_confirm": "Gut! Drücke dieselbe Taste noch einmal zur Bestätigung.\n\nEmpfänger zum Anlernen: {receiver}"
       }
     }
   },

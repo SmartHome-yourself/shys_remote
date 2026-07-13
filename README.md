@@ -403,10 +403,11 @@ Select **output**, **input** or **both**, submit the form, then press the button
 the physical remote within the timeout.
 Learning is only available when a receiver is configured on the device.
 
-For **RF devices**, learning is two steps: after submitting the form, the dialog shows
-"press the button now" and waits for a first capture, then "press it again to confirm"
-and waits for a second one. Both captures must agree (within the integration's **Signal
-match tolerance** option) before the signal is stored — see
+For **RF devices**, learning is two form steps: submitting the name/direction/timeout
+form waits for a first capture, and on success shows a second, one-click **Confirm
+signal** form — submitting that waits for a second capture. Both captures must agree
+(within the integration's **Signal match tolerance** option) before the signal is
+stored — see
 ["If a learned RF signal doesn't control the device"](#if-a-learned-rf-signal-doesnt-control-the-device)
 for what a persistent mismatch usually means. IR devices are unaffected by this and only
 need a single capture, as before.
