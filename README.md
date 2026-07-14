@@ -356,6 +356,28 @@ and RX radio states — `cc1101.begin_tx` before sending, `cc1101.begin_rx` righ
 with a short `delay: 2ms` to let the chip settle into TX mode first. Without these
 hooks the chip just stays in whichever mode it was last in.
 
+#### Setting up the ESPHome device
+
+How to actually get one of the YAML examples above onto a device, using the ESPHome
+add-on's built-in web UI (no separate ESPHome CLI/IDE needed):
+
+1. Install the ESPHome add-on in Home Assistant: **Settings → Add-ons → Add-on Store →
+   ESPHome → Install**.
+2. Open **ESPHome** from the sidebar and click **+ New device**.
+3. Enter a device name and select your board type (e.g. **ESP32-S3 DevKitC-1** for the
+   CC1101 example, or **ESP32** for the KC868-AG).
+4. Replace the generated YAML with the appropriate example from above.
+5. Adjust the device name and Wi-Fi credentials for your network — use `secrets.yaml`
+   rather than hardcoding them, e.g. `ssid: !secret wifi_ssid`.
+6. Click **Install**:
+   - First flash: **Plug into this computer** (USB/serial).
+   - Every update after that: **Wirelessly** (OTA) — no more cabling needed.
+7. Once flashed, the device is usually discovered automatically under **Settings →
+   Devices & services → ESPHome**. If it isn't, add it manually: **Add integration →
+   ESPHome → enter the device's IP address**.
+8. In SHYS Remote, add or edit a device and pick **RF Learning Receiver** and **RF
+   Proxy Transmitter** (the entity names from the YAML) as receiver and transmitter.
+
 #### Cheap OOK modules (FS1000A, XY-MK-5V and similar)
 
 These work the same way as the KC868-AG example above: a plain GPIO-driven transmitter
@@ -710,6 +732,18 @@ setzen (ESPHome-Bug
 RMT-Pin-Routing und es wird kein RF gesendet); stattdessen über die Pins von
 `remote_transmitter`/`remote_receiver` verdrahten, siehe Abschnitt **RF Hardware
 Setup** oben für die vollständigen, getesteten YAML-Beispiele beider Plattformen.
+
+**ESPHome-Gerät einrichten:** ESPHome-Add-on installieren (**Einstellungen → Add-ons
+→ Add-on-Store → ESPHome**), dort ein **neues Gerät** anlegen, Board-Typ wählen
+(z. B. ESP32-S3 DevKitC-1 für CC1101, ESP32 für den KC868-AG), das generierte YAML
+durch das passende Beispiel aus **RF Hardware Setup** oben ersetzen, Gerätename und
+WLAN-Zugangsdaten anpassen (über `secrets.yaml`, z. B. `ssid: !secret wifi_ssid`).
+Erstes Flashen per USB-Kabel, alle weiteren Updates drahtlos (OTA). Danach erscheint
+das Gerät meist automatisch unter **Einstellungen → Geräte & Dienste → ESPHome** —
+sonst manuell über **Integration hinzufügen → ESPHome** mit der IP-Adresse. In SHYS
+Remote dann beim Gerät die neuen Entitäten `RF Learning Receiver` und `RF Proxy
+Transmitter` als Empfänger/Transmitter auswählen. Ausführliche Schritt-für-Schritt-
+Anleitung: Abschnitt **Setting up the ESPHome device** oben.
 
 ### Geräteoptionen
 
