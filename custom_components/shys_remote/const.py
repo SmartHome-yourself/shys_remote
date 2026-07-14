@@ -13,12 +13,26 @@ STORAGE_VERSION = 2
 CONFIG_VERSION = 2
 
 DEFAULT_CARRIER_FREQUENCY = 38000
+DEFAULT_RF_FREQUENCY = 433_920_000
 DEFAULT_LEARN_TIMEOUT = 10
 DEFAULT_PULSE_MS = 500
 DEFAULT_MATCH_TOLERANCE = 25
 DEFAULT_DEBOUNCE_MS = 300
 DEFAULT_SEND_REPEAT_COUNT = 1
 DEFAULT_SEND_REPEAT_DELAY_MS = 45
+
+# Cheap fixed-code OOK RF receivers (e.g. PT2262/EV1527-style sockets) generally
+# don't decode a single burst - unlike NEC-style IR remotes, they expect the same
+# code sent back-to-back several times with a short gap before they latch. IR
+# keeps the settings above; these only apply as the RF fallback default below.
+DEFAULT_RF_SEND_REPEAT_COUNT = 10
+DEFAULT_RF_SEND_REPEAT_DELAY_MS = 10
+
+# Pure noise filter for a learned RF capture - not a protocol length
+# requirement. A single AGC glitch or spurious pulse can be reported as a
+# 1-2 entry "signal"; anything that short is almost certainly noise, not a
+# real remote. Deliberately low so genuinely short fixed codes still learn.
+MIN_RF_CAPTURE_PULSES = 10
 
 DIRECTION_OUTPUT = "output"
 DIRECTION_INPUT = "input"
@@ -30,6 +44,7 @@ SERVICE_DELETE = "delete"
 
 ATTR_DEVICE = "device"
 ATTR_DIRECTION = "direction"
+ATTR_MEDIUM = "medium"
 ATTR_NAME = "name"
 ATTR_RECEIVER_ENTITY_ID = "receiver_entity_id"
 ATTR_TRANSMITTER_ENTITY_ID = "transmitter_entity_id"
@@ -39,6 +54,7 @@ CONF_DEBOUNCE_MS = "debounce_ms"
 CONF_DEVICE_NAME = "device_name"
 CONF_MATCH_TOLERANCE = "match_tolerance"
 CONF_PULSE_MS = "pulse_ms"
+CONF_RF_FREQUENCY = "rf_frequency"
 CONF_SEND_REPEAT_COUNT = "send_repeat_count"
 CONF_SEND_REPEAT_DELAY_MS = "send_repeat_delay_ms"
 
@@ -107,13 +123,31 @@ def get_integration_options(entry) -> dict[str, int | float]:
 
 
 def get_device_send_options(subentry) -> dict[str, int]:
-    """Return per-device send repeat settings with defaults."""
+    """Return per-device send repeat settings with defaults.
+
+    Falls back to RF-specific defaults for devices without an explicit
+    send_repeat_count/send_repeat_delay_ms stored, since a single IR-style
+    burst is usually not enough for fixed-code RF receivers to react.
+    Explicit per-device values (set via the config flow) always win.
+    """
+    # Local import: const.py is a dependency-free leaf module, imported by
+    # signal_transport.py's neighbours; keep that direction one-way.
+    from .signal_transport import SIGNAL_MEDIUM_IR, SIGNAL_MEDIUM_RF
+
+    medium = subentry.data.get(ATTR_MEDIUM, SIGNAL_MEDIUM_IR)
+    if medium == SIGNAL_MEDIUM_RF:
+        default_repeat_count = DEFAULT_RF_SEND_REPEAT_COUNT
+        default_repeat_delay_ms = DEFAULT_RF_SEND_REPEAT_DELAY_MS
+    else:
+        default_repeat_count = DEFAULT_SEND_REPEAT_COUNT
+        default_repeat_delay_ms = DEFAULT_SEND_REPEAT_DELAY_MS
+
     return {
         CONF_SEND_REPEAT_COUNT: int(
-            subentry.data.get(CONF_SEND_REPEAT_COUNT, DEFAULT_SEND_REPEAT_COUNT)
+            subentry.data.get(CONF_SEND_REPEAT_COUNT, default_repeat_count)
         ),
         CONF_SEND_REPEAT_DELAY_MS: int(
-            subentry.data.get(CONF_SEND_REPEAT_DELAY_MS, DEFAULT_SEND_REPEAT_DELAY_MS)
+            subentry.data.get(CONF_SEND_REPEAT_DELAY_MS, default_repeat_delay_ms)
         ),
     }
 

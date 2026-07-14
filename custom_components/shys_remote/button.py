@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.components.infrared import InfraredEmitterConsumerEntity
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import DOMAIN, output_signal_unique_id
+from .signal_transport import get_transport_entity_id
 from .icons import icon_for_signal
 
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ async def async_setup_entry(
             async_add_entities(entities, config_subentry_id=subentry.subentry_id)
 
 
-class ShysRemoteButton(InfraredEmitterConsumerEntity, ButtonEntity):
+class ShysRemoteButton(ButtonEntity):
     """Button that sends a learned remote command."""
 
     _attr_has_entity_name = True
@@ -60,7 +60,7 @@ class ShysRemoteButton(InfraredEmitterConsumerEntity, ButtonEntity):
         self._manager = manager
         self._command_name = command_name
         self._command_data = command_data
-        self._infrared_emitter_entity_id = manager.get_transmitter_entity_id(subentry)
+        self._transport_entity_id = get_transport_entity_id(subentry, command_data)
         self._attr_unique_id = output_signal_unique_id(subentry.unique_id, command_name)
         self._attr_name = command_name
         self._attr_icon = icon_for_signal(command_name)
@@ -79,5 +79,4 @@ class ShysRemoteButton(InfraredEmitterConsumerEntity, ButtonEntity):
             self._subentry,
             self._command_data,
             context=self._context,
-            sender=self._send_command,
         )

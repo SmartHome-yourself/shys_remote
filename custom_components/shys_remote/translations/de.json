@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "SHYS Remote",
-        "description": "Diese Integration speichert angelernte Fernbedienungssignale und reagiert auf eingehende Signale über infrared Empfänger und Transmitter.\n\nNach dem Einrichten kannst du Geräte hinzufügen und Signale anlernen. Output-Signale werden per Button gesendet, Input-Signale lösen Binary Sensoren aus."
+        "description": "Diese Integration speichert angelernte Fernbedienungssignale und reagiert auf eingehende Signale über Infrared-Empfänger und Infrared- oder Funk-Transmitter.\n\nNach dem Einrichten kannst du Geräte hinzufügen und Signale anlernen. Output-Signale werden per Button gesendet, Input-Signale lösen Binary Sensoren aus."
       }
     },
     "abort": {
@@ -39,28 +39,26 @@
       "step": {
         "user": {
           "title": "Gerät hinzufügen",
-          "description": "Lege ein Gerät an und wähle den passenden infrared Transmitter. Der Empfänger ist optional.\n\nOhne Empfänger sind nur Output-Signale möglich; Input/Binary-Sensoren und Anlernen sind deaktiviert.",
+          "description": "Lege ein Gerät an und wähle den passenden Transmitter. Der Empfänger ist optional.\n\nOhne Empfänger sind nur Output-Signale möglich; Input/Binary-Sensoren und Anlernen sind deaktiviert.{transmitter_hint}",
           "data": {
             "device_name": "Gerätename",
-            "receiver_entity_id": "Infrared Empfänger",
-            "transmitter_entity_id": "Infrared Transmitter",
+            "medium": "Signal-Medium",
+            "rf_frequency": "RF-Frequenz",
+            "receiver_entity_id": "Empfänger",
+            "transmitter_entity_id": "Transmitter",
             "signal_source": "Signale",
             "send_repeat_count": "Sendewiederholungen",
             "send_repeat_delay_ms": "Pause zwischen Wiederholungen"
           },
           "data_description": {
             "device_name": "Name des logischen Geräts in Home Assistant, z. B. TV oder AV-Empfänger.",
-            "receiver_entity_id": "Optionaler Infrared Empfänger zum Anlernen und für Input-Signale. Leer lassen, wenn du nur senden möchtest.",
-            "transmitter_entity_id": "Infrared Transmitter zum Senden von Output-Signalen.",
+            "medium": "Signalübertragung für dieses Gerät wählen: Infrared für bestehende IR-Workflows, Funk für RF-Transmitter.",
+            "rf_frequency": "Betriebsfrequenz in Hz für Funk-Geräte, z. B. 433920000 für 433,92 MHz. Wird bei Infrarot-Geräten ignoriert.",
+            "receiver_entity_id": "Optionaler Empfänger zum Anlernen und für Input-Signale. Leer lassen, wenn du nur senden möchtest.",
+            "transmitter_entity_id": "Transmitter zum Senden von Output-Signalen.",
             "signal_source": "Signale später manuell anlernen oder beim Anlegen Tasten aus der mitgelieferten Flipper-IRDB importieren.",
             "send_repeat_count": "Wie oft jedes Signal beim Senden hintereinander gesendet wird.",
             "send_repeat_delay_ms": "Wartezeit zwischen den einzelnen Sendewiederholungen."
-          },
-          "data_options": {
-            "signal_source": {
-              "manual": "Später manuell anlernen",
-              "irdb": "Aus IR-Datenbank importieren"
-            }
           }
         },
         "irdb_search": {
@@ -73,12 +71,6 @@
           "data_description": {
             "irdb_query": "Beispiel: Samsung TV, Sony Soundbar oder BN59.",
             "irdb_category": "Optionale Einschränkung, z. B. nur TVs."
-          },
-          "data_options": {
-            "irdb_category": {
-              "__all__": "Alle Kategorien",
-              "all": "Alle Kategorien"
-            }
           }
         },
         "irdb_pick_remote": {
@@ -89,11 +81,6 @@
           },
           "data_description": {
             "irdb_remote": "Fernbedienung zum Import wählen. Im nächsten Schritt legst du die Richtung fest. Bei vielen Treffern über die Seiten-Einträge blättern."
-          },
-          "data_options": {
-            "irdb_remote": {
-              "__new_search__": "↩ Neue Suche"
-            }
           }
         },
         "irdb_confirm": {
@@ -104,13 +91,6 @@
           },
           "data_description": {
             "direction": "Output erzeugt Sende-Buttons. Input erzeugt Binary Sensoren. Beides erzeugt jeweils Button und Binary Sensor pro Signal. Ohne Empfänger ist nur Output verfügbar."
-          },
-          "data_options": {
-            "direction": {
-              "output": "Senden (Output)",
-              "input": "Empfangen (Input)",
-              "both": "Beides (Input + Output)"
-            }
           }
         },
         "reconfigure": {
@@ -124,25 +104,29 @@
         },
         "edit_device": {
           "title": "Gerät bearbeiten",
-          "description": "Name oder infrared Hardware für {device} ändern.\n\nHinweis: Ohne Empfänger sind Anlernen sowie Input/Binary-Sensoren nicht möglich.",
+          "description": "Name oder Hardware für {device} ändern.\n\nHinweis: Ohne Empfänger sind Anlernen sowie Input/Binary-Sensoren nicht möglich.",
           "data": {
             "device_name": "Gerätename",
-            "receiver_entity_id": "Infrared Empfänger",
-            "transmitter_entity_id": "Infrared Transmitter",
+            "medium": "Signal-Medium",
+            "rf_frequency": "RF-Frequenz",
+            "receiver_entity_id": "Empfänger",
+            "transmitter_entity_id": "Transmitter",
             "send_repeat_count": "Sendewiederholungen",
             "send_repeat_delay_ms": "Pause zwischen Wiederholungen"
           },
           "data_description": {
             "device_name": "Anzeigename dieses Geräts in Home Assistant.",
-            "receiver_entity_id": "Optionaler Infrared Empfänger zum Anlernen und für Input-Signale.",
-            "transmitter_entity_id": "Infrared Transmitter zum Senden von Output-Signalen.",
+            "medium": "Übertragungsart für dieses Gerät wählen: Infrarot oder Funk (RF).",
+            "rf_frequency": "Betriebsfrequenz in Hz für Funk-Geräte, z. B. 433920000 für 433,92 MHz. Wird bei Infrarot-Geräten ignoriert.",
+            "receiver_entity_id": "Optionaler Empfänger zum Anlernen und für Input-Signale.",
+            "transmitter_entity_id": "Transmitter zum Senden von Output-Signalen.",
             "send_repeat_count": "Wie oft jedes Signal beim Senden hintereinander gesendet wird.",
             "send_repeat_delay_ms": "Wartezeit zwischen den einzelnen Sendewiederholungen."
           }
         },
         "learn_command": {
           "title": "Signal anlernen",
-          "description": "Gib einen Namen und die Richtung für das Signal ein, bestätige das Formular und drücke danach innerhalb der Wartezeit die Taste auf der Fernbedienung für {device}.\n\nEmpfänger zum Anlernen: {receiver}",
+          "description": "Gib einen Namen und die Richtung für das Signal ein, bestätige das Formular und drücke danach innerhalb der Wartezeit die Taste auf der Fernbedienung für {device}.\n\nEmpfänger zum Anlernen: {receiver}{capture_hint}",
           "data": {
             "name": "Signalname",
             "direction": "Richtung",
@@ -152,13 +136,6 @@
             "name": "Eindeutiger Name für dieses Signal am Gerät, z. B. power oder volume_up.",
             "direction": "Output erzeugt einen Sende-Button. Input erzeugt einen Binary Sensor. Beides erzeugt Button und Binary Sensor gleichzeitig.",
             "timeout": "Wie lange Home Assistant nach dem Absenden des Formulars auf das nächste Signal wartet."
-          },
-          "data_options": {
-            "direction": {
-              "output": "Senden (Output)",
-              "input": "Empfangen (Input)",
-              "both": "Beides (Input + Output)"
-            }
           }
         },
         "delete_command": {
@@ -181,11 +158,12 @@
         "invalid_signal_name": "Bitte einen gültigen Signalnamen angeben (Buchstaben, Zahlen, Unterstrich).",
         "invalid_receiver": "Der gewählte Empfänger ist keine gültige infrared Empfänger-Entität.",
         "manual_requires_receiver": "Ohne Empfänger ist \"Später manuell anlernen\" nicht möglich. Nutze stattdessen den IR-Datenbank-Import oder wähle einen Empfänger.",
-        "invalid_emitter": "Der gewählte Transmitter ist keine gültige infrared Emitter-Entität.",
+        "invalid_emitter": "Der gewählte Transmitter ist für das gewählte Signal-Medium ungültig.",
         "device_already_exists": "Ein Gerät mit diesem Namen existiert bereits.",
         "command_already_exists": "Dieses Signal existiert auf dem Gerät bereits.",
         "learn_timeout": "Innerhalb der Wartezeit wurde kein Signal empfangen.",
         "empty_signal": "Das empfangene Signal enthielt keine Timings.",
+        "rf_capture_too_short": "Das erfasste Signal war zu kurz, um ein echtes Fernbedienungssignal zu sein. Fernbedienung näher an den Empfänger halten und erneut versuchen.",
         "learn_failed": "Das Anlernen ist fehlgeschlagen.",
         "receiver_required": "Für dieses Gerät ist kein Infrared Empfänger konfiguriert.",
         "receiver_required_for_input": "Input oder Beides benötigt einen konfigurierten Geräte-Empfänger.",
@@ -203,7 +181,29 @@
         "signal_deleted": "Signal {name} wurde von {device} entfernt.",
         "no_commands": "Für dieses Gerät sind noch keine Signale gespeichert.",
         "already_configured": "Ein Gerät mit diesem Namen existiert bereits.",
-        "reconfigure_successful": "Geräteeinstellungen wurden aktualisiert."
+        "reconfigure_successful": "Geräteeinstellungen wurden aktualisiert.",
+        "learn_step_failed": "Beim Anlernen des Signals ist ein unerwarteter Fehler aufgetreten. Bitte erneut versuchen."
+      }
+    }
+  },
+  "selector": {
+    "medium": {
+      "options": {
+        "ir": "Infrarot",
+        "rf": "Funk (RF)"
+      }
+    },
+    "signal_source": {
+      "options": {
+        "manual": "Später manuell anlernen",
+        "irdb": "Aus IR-Datenbank importieren"
+      }
+    },
+    "direction": {
+      "options": {
+        "output": "Senden (Output)",
+        "input": "Empfangen (Input)",
+        "both": "Beides (Input + Output)"
       }
     }
   },
@@ -230,7 +230,7 @@
         },
         "transmitter_entity_id": {
           "name": "Sender",
-          "description": "Optionaler Override für den Standard-infrared-Sender des Geräts."
+          "description": "Optionaler Override für den Standard-Sender des Geräts."
         },
         "timeout": {
           "name": "Timeout",
@@ -269,22 +269,22 @@
   },
   "exceptions": {
     "command_already_exists": {
-      "message": "Signal '{name}' existiert auf Gerät '{device}' bereits."
+      "message": "Signal {name} existiert auf Gerät {device} bereits."
     },
     "command_not_found": {
-      "message": "Signal '{name}' wurde auf Gerät '{device}' nicht gefunden."
+      "message": "Signal {name} wurde auf Gerät {device} nicht gefunden."
     },
     "device_not_found": {
-      "message": "Gerät '{device}' wurde nicht gefunden."
+      "message": "Gerät {device} wurde nicht gefunden."
     },
     "empty_signal": {
       "message": "Das empfangene Signal enthielt keine Timings."
     },
     "invalid_receiver": {
-      "message": "Entität '{entity_id}' ist kein infrared Empfänger."
+      "message": "Entität {entity_id} ist kein infrared Empfänger."
     },
     "invalid_emitter": {
-      "message": "Entität '{entity_id}' ist kein infrared Transmitter."
+      "message": "Entität {entity_id} ist für das gewählte Signal-Medium kein gültiger Transmitter."
     },
     "receiver_required": {
       "message": "Für dieses Gerät ist kein Infrared Empfänger konfiguriert."
@@ -295,17 +295,20 @@
     "learn_timeout": {
       "message": "Innerhalb von {timeout} Sekunden wurde kein Signal empfangen."
     },
+    "rf_capture_too_short": {
+      "message": "Das erfasste RF-Signal war zu kurz, um ein echtes Fernbedienungssignal zu sein."
+    },
     "not_loaded": {
       "message": "SHYS Remote ist nicht geladen."
     },
     "signal_not_output": {
-      "message": "Signal '{name}' auf Gerät '{device}' ist als Input konfiguriert und kann nicht gesendet werden."
+      "message": "Signal {name} auf Gerät {device} ist als Input konfiguriert und kann nicht gesendet werden."
     },
     "irdb_index_failed": {
       "message": "Der Flipper-IRDB-Index konnte nicht geladen werden ({status})."
     },
     "irdb_download_failed": {
-      "message": "Fernbedienung '{path}' konnte nicht heruntergeladen werden (HTTP {status})."
+      "message": "Fernbedienung {path} konnte nicht heruntergeladen werden (HTTP {status})."
     }
   }
 }

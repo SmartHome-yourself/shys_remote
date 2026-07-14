@@ -1,0 +1,3 @@
+from rf_protocols import RadioFrequencyCommand
+
+class OOKCommand(RadioFrequencyCommand): ...

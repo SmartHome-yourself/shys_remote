@@ -36,6 +36,14 @@ from .const import (
     output_signal_unique_id,
 )
 from .signal_matching import signal_matches
+from .signal_transport import (
+    RawSignalCommand,
+    SIGNAL_BACKEND_HOMEASSISTANT_RADIO_FREQUENCY,
+    SIGNAL_MEDIUM_RF,
+    get_signal_backend,
+    get_signal_medium,
+    get_transport_entity_id,
+)
 
 if TYPE_CHECKING:
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -175,10 +183,33 @@ class RemoteManager:
         """Return signals for one device subentry."""
         return self.commands.setdefault(subentry_id, {})
 
-    def build_command(self, command_data: dict[str, Any]) -> RawInfraredCommand:
-        """Build an infrared-protocols command from stored data."""
-        modulation = command_data.get("carrier_frequency", DEFAULT_CARRIER_FREQUENCY)
-        return RawInfraredCommand(command_data["command"], modulation=modulation)
+    def build_command(
+        self,
+        command_data: dict[str, Any],
+        subentry: ConfigSubentry | None = None,
+    ) -> RawInfraredCommand | RawSignalCommand:
+        """Build a backend-aware command from stored data.
+
+        ``carrier_frequency`` holds the IR carrier frequency in Hz for
+        infrared signals and the RF transmit frequency in Hz for
+        radio-frequency signals; the same storage key covers both since one
+        learned signal is always exactly one medium.
+        """
+        carrier_frequency = command_data.get("carrier_frequency", DEFAULT_CARRIER_FREQUENCY)
+        timings = list(command_data["command"])
+        medium = get_signal_medium(command_data)
+        backend = get_signal_backend(command_data)
+
+        if medium == SIGNAL_MEDIUM_RF or backend == SIGNAL_BACKEND_HOMEASSISTANT_RADIO_FREQUENCY:
+            return RawSignalCommand(
+                timings=timings,
+                frequency=carrier_frequency,
+                medium=medium,
+                backend=backend,
+                transport_entity_id=get_transport_entity_id(subentry, command_data),
+            )
+
+        return RawInfraredCommand(timings, modulation=carrier_frequency)
 
     def get_transmitter_entity_id(self, subentry: ConfigSubentry) -> str:
         """Return the transmitter configured for a device."""
