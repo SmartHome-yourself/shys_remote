@@ -173,7 +173,13 @@ remote_receiver:
     dump: raw
   - id: rf_rx
     pin: GPIO13
-    dump: raw
+    dump:
+      - rc_switch
+      - raw
+    filter: 50us       # keep short pulses - don't cut them off
+    idle: 30ms          # keep the sync gap between repeats intact
+    tolerance: 60%
+    buffer_size: 8kb    # room for a long multi-repeat burst
 
 remote_transmitter:
   - id: ir_tx
@@ -183,7 +189,7 @@ remote_transmitter:
   - id: rf_tx
     pin: GPIO22
     carrier_duty_percent: 100%
-    non_blocking: true
+    non_blocking: false  # blocking send, for reliable RAW replay
 
 infrared:
   - platform: ir_rf_proxy
@@ -208,12 +214,21 @@ Notes on this config:
 
 - `RF Learning Receiver` deliberately has no `receiver_frequency` — that field is IR
   demodulation metadata only (no hardware effect) and doesn't apply to raw RF capture.
+- `dump` includes `rc_switch` purely as an ESPHome-side diagnostic — it's what shows
+  "protocol=4" in the ESPHome logs when a signal is received. SHYS Remote never reads
+  that decoded output; it only ever consumes the `raw` timings (see ["Learn and send
+  use the exact same raw format"](#learn-and-send-use-the-exact-same-raw-format) below
+  for why). `dump: raw` alone works exactly the same for SHYS Remote's purposes.
 - There is no native `radio_frequency:` receiver block for `rf_rx`. Home Assistant
   wouldn't create an entity for it anyway (see above), so it would just be dead
   configuration.
 - In SHYS Remote, pick `RF Learning Receiver` as the **Receiver** and `RF Proxy
   Transmitter` as the **Transmitter** for an RF device — both are needed for `input`/
   `both` direction signals; output-only RF devices only need the transmitter.
+- `filter`/`idle`/`buffer_size` and `non_blocking: false` are verified-working values
+  for capturing and replaying a complete multi-repeat burst (see
+  [RF Hardware Setup](#rf-hardware-setup) below for why each one matters and what
+  happens if you get them wrong).
 
 This workaround is expected to stay necessary for a while: Home Assistant's `radio_frequency`
 entity platform launched transmitter-only by design, with receiver entities explicitly
@@ -221,6 +236,147 @@ deferred to a future proposal (see the
 [architecture discussion](https://github.com/home-assistant/architecture/discussions/1365)).
 There is currently no version of Home Assistant Core where a native RF receiver entity
 exists, so this isn't something a future SHYS Remote release can remove on its own.
+
+### RF Hardware Setup
+
+RF support has been verified end-to-end on two different receiver/transmitter platforms
+— a cheap OOK module and a proper Sub-GHz transceiver — both reliably switching a
+433 MHz Emil-Lux remote socket through SHYS Remote. Neither example needs any
+hardware-specific code in SHYS Remote itself (see ["Using other RF
+hardware"](#using-other-rf-hardware-eg-cc1101) below) — the settings below are about
+getting a clean, complete RAW capture out of the ESPHome side, which matters more than
+which chip you use.
+
+#### KinCony KC868-AG (ESP32, cheap OOK module)
+
+```yaml
+remote_receiver:
+  - id: rf_rx
+    pin: GPIO13
+    dump:
+      - rc_switch
+      - raw
+    filter: 50us
+    idle: 30ms
+    tolerance: 60%
+    buffer_size: 8kb
+
+remote_transmitter:
+  - id: rf_tx
+    pin: GPIO22
+    carrier_duty_percent: 100%
+    non_blocking: false
+
+infrared:
+  - platform: ir_rf_proxy
+    name: RF Learning Receiver
+    remote_receiver_id: rf_rx
+
+radio_frequency:
+  - platform: ir_rf_proxy
+    name: RF Proxy Transmitter
+    frequency: 433.92MHz
+    remote_transmitter_id: rf_tx
+```
+
+This is the same wiring as the full IR+RF example above, with just the RF pins shown
+here. See that example for the complete file including the IR receiver/transmitter.
+
+#### CC1101 + ESP32-S3 (Sub-GHz transceiver)
+
+```yaml
+spi:
+  id: spi_bus
+  clk_pin: GPIO13
+  mosi_pin: GPIO11
+  miso_pin: GPIO12
+
+cc1101:
+  id: cc1101_module
+  cs_pin: GPIO10
+  spi_id: spi_bus
+  frequency: 433.92MHz
+  output_power: 10
+  modulation_type: ASK/OOK
+  symbol_rate: 5000
+  filter_bandwidth: 203kHz
+  # gdo0_pin intentionally NOT set here - see the ESPHome #16876 note below.
+
+remote_receiver:
+  id: rf_rx
+  pin:
+    number: GPIO8        # GDO2
+    mode:
+      input: true
+  dump:
+    - rc_switch
+    - raw
+  tolerance: 60%
+  filter: 50us
+  idle: 30ms
+  buffer_size: 8kb
+
+remote_transmitter:
+  id: rf_tx
+  pin:
+    number: GPIO9        # GDO0
+    mode:
+      output: true
+  carrier_duty_percent: 100%
+  non_blocking: false
+  on_transmit:
+    then:
+      - cc1101.begin_tx: cc1101_module
+      - delay: 2ms
+  on_complete:
+    then:
+      - cc1101.begin_rx: cc1101_module
+
+radio_frequency:
+  - platform: ir_rf_proxy
+    name: RF Proxy Transmitter
+    frequency: 433.92MHz
+    remote_transmitter_id: rf_tx
+
+infrared:
+  - platform: ir_rf_proxy
+    name: RF Learning Receiver
+    frequency: 433.92MHz
+    remote_receiver_id: rf_rx
+```
+
+**ESPHome issue [#16876](https://github.com/esphome/esphome/issues/16876):** on the
+ESP32-S3, setting `gdo0_pin` inside the `cc1101:` block breaks the chip's RMT pin
+routing and no RF is transmitted at all — the ESPHome logs look normal, but nothing
+goes over the air. The fix is to leave `gdo0_pin` unset in the `cc1101:` block and wire
+GDO0/GDO2 through the `remote_transmitter`/`remote_receiver` pins instead, as in the
+example above. This is specific to the ESP32-S3; the classic ESP32 isn't affected.
+The `on_transmit`/`on_complete` automations are what switch the CC1101 between its TX
+and RX radio states — `cc1101.begin_tx` before sending, `cc1101.begin_rx` right after,
+with a short `delay: 2ms` to let the chip settle into TX mode first. Without these
+hooks the chip just stays in whichever mode it was last in.
+
+#### Cheap OOK modules (FS1000A, XY-MK-5V and similar)
+
+These work the same way as the KC868-AG example above: a plain GPIO-driven transmitter
+and receiver, no SPI, no mode-switching automations. Wire the module's data pin to
+`remote_receiver`/`remote_transmitter` the same way, apply the same `filter`/`idle`/
+`tolerance`/`buffer_size` settings, and set `carrier_duty_percent: 100%` on the
+transmitter — that's the whole difference from a KC868-AG setup.
+
+#### RF receiver/transmitter parameters
+
+These matter regardless of which chip is behind them - the values below are verified
+working defaults, not just a starting point to tune from:
+
+| Parameter | Recommended value | Why |
+| --- | --- | --- |
+| `filter` (receiver) | `50us` | Filters out sub-50µs glitches. Higher values (250µs+) start cutting off real short pulses, producing incomplete or inconsistent captures. |
+| `idle` (receiver) | `30ms` (at least 20–30ms) | Ends a capture once the line has been quiet this long. Too short (e.g. 10ms) splits the gap *between* repeats inside one burst, fragmenting a single multi-repeat signal into several separate, incomplete captures. |
+| `buffer_size` (receiver) | `8kb` | The default buffer is too small for a long RAW dump covering several repeated cycles - too small silently truncates the capture. |
+| `non_blocking` (transmitter) | `false` | A non-blocking send can return before the full RAW sequence has actually gone out, cutting the transmission short. `false` blocks until sending is complete, which is what reliable RAW replay needs. |
+| `tolerance` (receiver) | `60%` | Wide enough to tolerate the timing jitter cheap OOK hardware and fixed-code remotes typically produce, without merging genuinely different signals together. |
+| `carrier_duty_percent` (transmitter) | `100%` | RF hardware generates its own carrier; anything other than 100% makes the ESP32 additionally modulate the line in software, corrupting the envelope (see ["If a learned RF signal doesn't control the device"](#if-a-learned-rf-signal-doesnt-control-the-device)). |
 
 ### Learn and send use the exact same raw format
 
@@ -233,7 +389,34 @@ assumed; this is a pure record-and-replay design and works with any ESPHome-comp
 transmitter/receiver pair. If a learned RF signal doesn't work, the raw capture itself is
 the first thing to check — not this integration's plumbing.
 
+**Why RAW instead of a decoded protocol like rc_switch:** ESPHome's `remote_receiver` can
+optionally *also* decode certain known encodings (`dump: rc_switch` shows up in the ESPHome
+logs as e.g. `Received rc_switch: protocol=4` when it recognizes one) — but that's purely a
+diagnostic feature of ESPHome itself, and SHYS Remote never reads that decoded output.
+Relying on it would mean hardcoding a specific protocol and its parameters (address,
+channel, pulse length), which breaks the moment a remote uses an encoding rc_switch doesn't
+know, and defeats the hardware-agnostic goal of this integration. Recording and replaying
+the raw waveform verbatim works regardless of what protocol - known or not - produced it.
+
+This matters in practice for common hardware-store remote sockets (Emil-Lux, Tronic, OBI,
+Brennenstuhl and similar 433 MHz sets): a single button press typically transmits a burst
+of about 4 repeated cycles. These are generally **not** a security rolling code — the
+remote is sending its (up to) 4 channel codes one after another in sequence within that
+burst, not a single code repeated for reliability. Capturing and replaying the whole burst
+as one RAW recording (see [RF Hardware Setup](#rf-hardware-setup) above for the receiver
+settings that make sure the capture isn't cut short) reproduces this correctly without
+SHYS Remote ever needing to know that's what's happening.
+
 ### If a learned RF signal doesn't control the device
+
+Quick reference:
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| Socket doesn't react at all | Capture cut short or fragmented | Check `filter`/`idle`/`buffer_size` (see [RF Hardware Setup](#rf-hardware-setup)) |
+| Reception is inconsistent between attempts | Capture fragmenting mid-burst | Increase `idle` (30ms is a good starting point) |
+| CC1101 sends no RF at all (logs look fine) | ESPHome bug [#16876](https://github.com/esphome/esphome/issues/16876) | Remove `gdo0_pin` from the `cc1101:` block (ESP32-S3 only) |
+| Signal gets split into several separate captures | `idle` too short for a multi-repeat burst | Increase `idle` to 30ms |
 
 Since learning captures whatever the receiver hardware reports, byte for byte, a bad capture
 is stored and replayed just as faithfully as a good one. In practice, on cheap 433 MHz OOK
@@ -283,56 +466,12 @@ switch between transmit and receive mode. Wiring it under the wrong ESPHome plat
 in an ESPHome device that looks fine in the ESPHome logs but never creates a usable entity
 in Home Assistant — indistinguishable, from SHYS Remote's side, from a device that was never
 flashed. This requires **ESPHome 2026.5.0 or newer** (CC1101 support in the `radio_frequency:`
-platform). Example:
+platform).
 
-```yaml
-spi:
-  clk_pin: GPIO18
-  mosi_pin: GPIO23
-  miso_pin: GPIO19
-
-cc1101:
-  id: cc1101_radio
-  cs_pin: GPIO5
-  gdo0_pin: GPIO27
-  gdo2_pin: GPIO26
-  frequency: 433.92MHz
-  modulation_type: ASK_OOK
-
-remote_transmitter:
-  id: rf_tx
-  pin: GPIO27
-  carrier_duty_percent: 100%
-  on_transmit:
-    then:
-      - cc1101.begin_tx: cc1101_radio
-  on_complete:
-    then:
-      - cc1101.begin_rx: cc1101_radio
-
-remote_receiver:
-  id: rf_rx
-  pin: GPIO26
-  dump: raw
-
-infrared:
-  - platform: ir_rf_proxy
-    name: RF Learning Receiver
-    remote_receiver_id: rf_rx
-
-radio_frequency:
-  - platform: ir_rf_proxy
-    name: RF Proxy Transmitter
-    frequency: 433.92MHz
-    remote_transmitter_id: rf_tx
-```
-
-This mirrors the KC868 example above: the receiver is still exposed through the `infrared:`
-platform (the learning workaround explained earlier applies to any RF hardware, not just
-FS1000A-style modules), while the transmitter goes through the native `radio_frequency:`
-platform. The `on_transmit`/`on_complete` hooks are what actually switch the CC1101 between
-its TX and RX radio states — without them the chip stays in whichever mode it last was and
-transmission silently does nothing. See ESPHome's
+A fully worked, verified CC1101 + ESP32-S3 example — including the `on_transmit`/
+`on_complete` mode-switch hooks and the ESP32-S3-specific `gdo0_pin` pitfall
+([ESPHome #16876](https://github.com/esphome/esphome/issues/16876)) — is in
+[RF Hardware Setup](#rf-hardware-setup) above. See ESPHome's
 [`cc1101`](https://esphome.io/components/cc1101/) docs for the full option list (dual-pin
 vs. single-pin wiring, output power, symbol rate) and adjust pins for your board.
 
@@ -556,6 +695,21 @@ lernst du RF-Signale stattdessen über eine zusätzlich als `infrared` eingebund
 Proxy-Receiver-Entity an, da rohe Puls-/Pause-Timings dort protokollunabhängig sind.
 Konkretes ESPHome-Beispiel (KinCony KC868-AG) und Details: Abschnitt **Learning RF
 signals (receiver workaround)** oben.
+
+RF wurde auf zwei Hardware-Plattformen verifiziert (KinCony KC868-AG mit einfachem
+OOK-Modul, sowie CC1101 + ESP32-S3) — beide schalten eine 433-MHz-Funksteckdose
+zuverlässig. Wichtig für einen vollständigen, unverfälschten RAW-Capture (gilt für
+jede Hardware): `filter: 50us`, `idle: 30ms` (mindestens 20–30 ms, sonst wird ein
+Mehrfach-Burst in Fragmente zerteilt), `buffer_size: 8kb` sowie am Transmitter
+`non_blocking: false`. Baumarkt-Funksteckdosen (Emil-Lux, Tronic, OBI, Brennenstuhl
+u. ä.) senden pro Tastendruck typischerweise einen Burst aus ca. 4 Zyklen — meist kein
+Rolling Code, sondern die (bis zu) 4 Kanalcodes nacheinander in einer Aussendung.
+Für CC1101 auf dem ESP32-S3 gilt zusätzlich: `gdo0_pin` **nicht** im `cc1101:`-Block
+setzen (ESPHome-Bug
+[#16876](https://github.com/esphome/esphome/issues/16876), unterbricht sonst das
+RMT-Pin-Routing und es wird kein RF gesendet); stattdessen über die Pins von
+`remote_transmitter`/`remote_receiver` verdrahten, siehe Abschnitt **RF Hardware
+Setup** oben für die vollständigen, getesteten YAML-Beispiele beider Plattformen.
 
 ### Geräteoptionen
 
